@@ -26,7 +26,8 @@ class-colored arrow and dotted trail.
 - 🌈 **Any color** — 12 presets, a rainbow mode, your class color, or a custom RGB value.
 - ✨ **Smooth animation** — breathing core, phase-shifted expanding rings, soft flicker.
 - 👥 **Party locator** — a minimap button opens a scrollable panel of your party or raid: class-colored names, live coordinates, a copy button, a class filter and sorting (roster / nearest / farthest / by class). Click a member to open the map on their location with a class-colored glow.
-- 🧭 **Navigation** — right-click a member, or `Shift`+left-click any spot on the map, to draw a movable on-screen arrow plus a class-colored dotted trail on both the world map and the minimap. Clear it by right-clicking the arrow or the on-map **Clear route** button.
+- 🧭 **Navigation** — right-click a member, or `Shift`+left-click any spot on the map, to draw a movable on-screen arrow plus a dotted trail on both the world map and the minimap. Clear it by right-clicking the arrow or the on-map **Clear route** button.
+- 🎯 **Fully customizable trail** — choose the marker style (dots, dashes, arrows or a solid line), an optional flowing animation with adjustable speed, plus size, color (class or a fixed palette incl. pink), black outline and spacing — all set **separately for the world map and the minimap**.
 - ⚙️ **In-game options panel** (native Settings UI) and full slash commands.
 - 🌍 **Localized** — shows in your client's language (English / Russian, more easy to add).
 - 🪶 Lightweight, no external libraries.
@@ -79,12 +80,14 @@ Open the panel with **`/sm`** (or `Esc → Options → AddOns → SpotMe`), or u
 | --- | --- |
 | `/sm party` | open the party/raid locator panel |
 | `/sm button` | show/hide the minimap button |
-| `/sm navcolor class` | navigation color: `class`, `red`, `cyan`, `green`, `yellow`, `black`, `white` |
+| `/sm navcolor class` | arrow color: `class`, `red`, `cyan`, `green`, `yellow`, `black`, `white`, `pink` |
+| `/sm dotcolor class` | trail color (same palette) |
 
 In the panel: **left-click** a member to show them on the map, **right-click** to navigate to them.
 **Shift + left-click** anywhere on the world map routes to that spot instead. A route draws a movable
-on-screen arrow plus a class-colored dotted trail on the world map and the minimap. Clear it by
-**right-clicking the arrow** or the **Clear route** button that appears on the open map. Filter the
+on-screen arrow plus a dotted trail on the world map and the minimap. Clear it by **right-clicking
+the arrow** or the **Clear route** button that appears on the open map. The trail is fully
+customizable in the options (style, animation, size, color, outline, spacing — per map). Filter the
 list by class with the icon row, cycle the sort order (roster / nearest / farthest / by class) with
 the header button, and open this options panel with the settings button.
 
