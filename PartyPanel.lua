@@ -151,7 +151,7 @@ local arrow, pathParent
 local pathDots = {}
 local NAV_DOTS = 16
 -- If the arrow points the wrong way in game, flip SIGN (1/-1) or add pi to OFFSET.
-local NAV_ROT_SIGN, NAV_ROT_OFFSET = 1, 0
+local NAV_ROT_SIGN, NAV_ROT_OFFSET = -1, 0
 local UpdateNav, ClearNav   -- forward declarations
 
 local function EnsureArrow()
