@@ -403,15 +403,30 @@ local function NavTargetMapPos(mapID)
         if p then return p:GetXY() end
     elseif navPoint then
         if navPoint.mapID == mapID then
-            return navPoint.x, navPoint.y   -- same map: use stored coords directly
+            return navPoint.x, navPoint.y   -- same map: stored coords
         end
-        -- different (but related) map: translate via world position, like a unit pin
-        local _, wp = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
-        if wp then
-            local mx, my = WorldToMapPos(mapID, wp.x, wp.y)
+        -- Blizzard's own cross-map translation of our waypoint (parent/child/sibling zones)
+        if C_Map.GetUserWaypointPositionForMap then
+            local wp = C_Map.GetUserWaypointPositionForMap(mapID)
+            if wp then local x, y = wp:GetXY(); if x then return x, y end end
+        end
+        -- fallback: project via world coordinates
+        local _, w2 = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+        if w2 then
+            local mx, my = WorldToMapPos(mapID, w2.x, w2.y)
             if mx then return mx, my end
         end
     end
+    return nil
+end
+
+-- Player position (0-1) on a given ui map. Projects via world coords when the
+-- player is not standing in the viewed zone, so the path shows on other zones too.
+local function PlayerMapPos(mapID)
+    local p = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
+    if p then local x, y = p:GetXY(); if x then return x, y end end
+    local py, px = UnitPosition("player")
+    if py and mapID then return WorldToMapPos(mapID, py, px) end
     return nil
 end
 
@@ -461,10 +476,9 @@ function UpdateNav()
     local wcfg = ns.GetCfg()
     if wcfg.ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
-        local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
+        local pmx, pmy = PlayerMapPos(mapID)
         local tmx, tmy = NavTargetMapPos(mapID)
-        if pp and tmx then
-            local pmx, pmy = pp:GetXY()
+        if pmx and tmx then
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
             local zoom = ns.CanvasZoom()
