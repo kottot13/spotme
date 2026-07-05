@@ -254,9 +254,12 @@ local function EnsureMinimapMarker()
     if not Minimap then return end
     if not minimapMarker then
         minimapMarker = CreateFrame("Frame", nil, Minimap)
+        minimapMarker:SetSize(cfg.minimapSize, cfg.minimapSize)
         minimapMarker:SetPoint("CENTER", Minimap, "CENTER")
-        minimapMarker:SetFrameStrata(Minimap:GetFrameStrata())
-        minimapMarker:SetFrameLevel(Minimap:GetFrameLevel() + 8)
+        -- On the reworked Midnight minimap the terrain/blip layers sit above a
+        -- same-strata child, so force our glow onto a higher strata + level.
+        minimapMarker:SetFrameStrata("MEDIUM")
+        minimapMarker:SetFrameLevel(4000)
         minimapMarker:Hide()
     end
     RebuildInner(minimapMarker, cfg.minimapSize)
@@ -554,6 +557,14 @@ SlashCmdList.SPOTME = function(msg)
         say("world=" .. tostring(cfg.showWorld) .. " mini=" .. tostring(cfg.showMinimap)
             .. " theme=" .. tostring(cfg.theme) .. " colorChoice=" .. tostring(cfg.colorChoice)
             .. " panel=" .. tostring(panelCategory ~= nil))
+        if minimapMarker then
+            say("mmMarker=yes shown=" .. tostring(minimapMarker:IsShown())
+                .. " strata=" .. tostring(minimapMarker:GetFrameStrata())
+                .. " level=" .. tostring(minimapMarker:GetFrameLevel())
+                .. " inner=" .. tostring(minimapMarker.inner ~= nil))
+        else
+            say("mmMarker=nil")
+        end
     elseif PRESETS[cmd] then
         SetColorChoice(cmd); say(string.format(L.COLOR_SET, cmd))
     elseif cmd == "color" then
