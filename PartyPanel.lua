@@ -202,19 +202,21 @@ local function GetDot(i)
             pathParent:SetAllPoints()
             pathParent:SetFrameStrata("HIGH")
         end
-        d = CreateFrame("Frame", nil, pathParent)
-        d:SetSize(18, 18)
-        -- solid black outline for contrast on bright maps
-        local back = d:CreateTexture(nil, "ARTWORK")
+        d = CreateFrame("Frame", nil, pathParent)   -- positioner (canvas coords, scale 1)
+        d:SetSize(1, 1)
+        local inner = CreateFrame("Frame", nil, d)   -- constant on-screen size (counter-scaled)
+        inner:SetSize(24, 24)
+        inner:SetPoint("CENTER")
+        local back = inner:CreateTexture(nil, "ARTWORK")
         back:SetTexture("Interface\\Masks\\CircleMaskScalable")
         back:SetVertexColor(0, 0, 0, 1)
         back:SetAllPoints()
-        -- solid class-colored core
-        local fill = d:CreateTexture(nil, "OVERLAY")
+        local fill = inner:CreateTexture(nil, "OVERLAY")
         fill:SetTexture("Interface\\Masks\\CircleMaskScalable")
         fill:SetPoint("CENTER")
-        fill:SetSize(12, 12)
-        d.fill = fill
+        fill:SetSize(16, 16)
+        inner.fill = fill
+        d.inner = inner
         pathDots[i] = d
     end
     return d
@@ -292,11 +294,14 @@ function UpdateNav()
             local tmx, tmy = tp:GetXY()
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
+            local zoom = ns.CanvasZoom()
+            local isc = (zoom > 0) and (1 / zoom) or 1
+            if isc < 0.5 then isc = 0.5 elseif isc > 3 then isc = 3 end
             local dxp, dyp = (tmx - pmx) * w, (tmy - pmy) * h
             local pathU = math.sqrt(dxp * dxp + dyp * dyp)
-            local stepU = math.min(w, h) * 0.03   -- spacing scales with the map -> constant on screen
+            local stepU = (zoom > 0) and (26 / zoom) or (math.min(w, h) * 0.02)  -- ~26 px between dots
             local n, dd = 0, stepU
-            while stepU > 0 and dd < pathU and n < 60 do
+            while stepU > 0 and dd < pathU and n < 80 do
                 local t = dd / pathU
                 n = n + 1
                 local mx = pmx + (tmx - pmx) * t
@@ -304,7 +309,8 @@ function UpdateNav()
                 local d = GetDot(n)
                 d:ClearAllPoints()
                 d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
-                d.fill:SetVertexColor(navR, navG, navB)
+                d.inner:SetScale(isc)
+                d.inner.fill:SetVertexColor(navR, navG, navB)
                 d:Show()
                 dd = dd + stepU
             end
