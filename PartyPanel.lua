@@ -222,10 +222,37 @@ local function HideDots()
     for _, d in ipairs(pathDots) do d:Hide() end
 end
 
+local miniDots = {}
+local MINI_ROT_SIGN = 1   -- flip if the minimap path mirrors when rotateMinimap is on
+
+local function GetMiniDot(i)
+    local d = miniDots[i]
+    if not d then
+        d = CreateFrame("Frame", nil, Minimap)
+        d:SetSize(12, 12)
+        d:SetFrameStrata(Minimap:GetFrameStrata())
+        d:SetFrameLevel(Minimap:GetFrameLevel() + 9)
+        local back = d:CreateTexture(nil, "ARTWORK")
+        back:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
+        back:SetDesaturated(true); back:SetVertexColor(0, 0, 0, 0.85); back:SetAllPoints()
+        local fill = d:CreateTexture(nil, "OVERLAY")
+        fill:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
+        fill:SetDesaturated(true); fill:SetPoint("CENTER"); fill:SetSize(8, 8)
+        d.fill = fill
+        miniDots[i] = d
+    end
+    return d
+end
+
+local function HideMiniDots()
+    for _, d in ipairs(miniDots) do d:Hide() end
+end
+
 function UpdateNav()
     if not navUnit or not UnitExists(navUnit) then
         if arrow then arrow:Hide() end
         HideDots()
+        HideMiniDots()
         return
     end
 
@@ -275,12 +302,40 @@ function UpdateNav()
     else
         HideDots()
     end
+
+    -- dotted path on the minimap (dots within the minimap's view radius)
+    if py and ty and pI == tI then
+        local radius = (C_Minimap and C_Minimap.GetViewRadius and C_Minimap.GetViewRadius()) or 200
+        local scale = (Minimap:GetWidth() / 2) / radius
+        local rot = GetCVarBool("rotateMinimap") and (MINI_ROT_SIGN * (facing or 0)) or 0
+        local sinR, cosR = math.sin(rot), math.cos(rot)
+        local tEast, tNorth = tx - px, ty - py
+        local n = 0
+        for i = 1, NAV_DOTS do
+            local t = i / (NAV_DOTS + 1)
+            local dEast, dNorth = tEast * t, tNorth * t
+            if (dEast * dEast + dNorth * dNorth) <= radius * radius then
+                n = n + 1
+                local d = GetMiniDot(n)
+                d:ClearAllPoints()
+                d:SetPoint("CENTER", Minimap, "CENTER",
+                    (dEast * cosR - dNorth * sinR) * scale,
+                    (dEast * sinR + dNorth * cosR) * scale)
+                d.fill:SetVertexColor(navR, navG, navB)
+                d:Show()
+            end
+        end
+        for i = n + 1, #miniDots do miniDots[i]:Hide() end
+    else
+        HideMiniDots()
+    end
 end
 
 function ClearNav()
     navUnit = nil
     if arrow then arrow:Hide() end
     HideDots()
+    HideMiniDots()
 end
 
 local function StartNav(unit)
