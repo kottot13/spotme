@@ -70,6 +70,7 @@ local DEFAULTS = {
     -- party locator
     minimapButton = { angle = 214, hide = false },
     partyPanel    = {},
+    classFilter   = {},
 }
 
 --=============================================================================

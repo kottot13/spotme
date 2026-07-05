@@ -1,9 +1,9 @@
 -- SpotMe Party Locator.
 --
 -- A minimap button opens a scrollable panel listing the group (party or raid).
--- Each row shows the member's class-colored name, their map coordinates and a
--- copy button. Clicking a member opens the world map on their zone with a
--- class-colored glow on their position.
+-- A row of class icons at the top filters the list by class. Each row shows the
+-- member's class-colored name, their map coordinates and a copy button. Clicking
+-- a member opens the world map on their zone with a class-colored glow.
 --
 -- Reuses the glow factory from Core via the shared `ns` table.
 
@@ -14,19 +14,33 @@ local SCALE_MIN, SCALE_MAX = 0.7, 2.5
 
 local PANEL_W    = 320
 local HEADER_H   = 34
+local FILTER_H   = 30            -- class-filter icon row
 local ROW_H      = 40
 local PAD        = 12
 local SB_W       = 24            -- space reserved for the scrollbar
 local MAX_VIS    = 9             -- rows visible before scrolling
 local ROW_W      = PANEL_W - 2 * PAD - SB_W
+local ICON_SIZE  = 22
+local ICON_GAP   = 3
+
+local CLASS_ORDER = {
+    "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT",
+    "SHAMAN", "MAGE", "WARLOCK", "MONK", "DRUID", "DEMONHUNTER", "EVOKER",
+}
+local CLASS_TEX = "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
 
 --=============================================================================
 -- Helpers
 --=============================================================================
+local function ClassFile(unit)
+    local _, cf = UnitClass(unit)
+    return cf
+end
+
 local function ClassColor(unit)
-    local _, classFile = UnitClass(unit)
-    local c = classFile and C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(classFile)
-    c = c or (classFile and RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile])
+    local cf = ClassFile(unit)
+    local c = cf and C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(cf)
+    c = c or (cf and RAID_CLASS_COLORS and RAID_CLASS_COLORS[cf])
     if c then return c.r, c.g, c.b end
     return 1, 1, 1
 end
@@ -42,7 +56,7 @@ local function UnitMapPos(unit)
     return mapID, x, y
 end
 
--- Party -> player + party1..N; raid -> raid1..N; solo -> just the player.
+-- Party -> player + party1..N; raid -> raid1..N; solo -> empty.
 local function BuildUnitList()
     local t = {}
     if IsInRaid() then
@@ -126,9 +140,11 @@ local function ShowCopyBox(anchor, text)
 end
 
 --=============================================================================
--- Party panel (scrollable list)
+-- Party panel (scrollable list + class filter)
 --=============================================================================
-local panel, content, rowPool
+local panel, content, filterBar
+local rowPool, filterIcons = {}, {}
+local Refresh, RebuildFilterBar   -- forward declarations
 
 local function CreateRow()
     local row = CreateFrame("Button", nil, content)
@@ -187,10 +203,53 @@ local function AcquireRow(i)
     return row
 end
 
+local function CreateFilterIcon()
+    local b = CreateFrame("Button", nil, filterBar)
+    b:SetSize(ICON_SIZE, ICON_SIZE)
+    local tex = b:CreateTexture(nil, "ARTWORK")
+    tex:SetAllPoints()
+    tex:SetTexture(CLASS_TEX)
+    b.tex = tex
+    b:SetScript("OnEnter", function(self)
+        if self.classFile then
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:SetText((LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[self.classFile]) or self.classFile)
+            GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:SetScript("OnClick", function(self)
+        local db = ns.GetCfg().classFilter
+        if db[self.classFile] then db[self.classFile] = nil else db[self.classFile] = true end
+        Refresh()
+    end)
+    return b
+end
+
+function RebuildFilterBar(present)
+    local db = ns.GetCfg().classFilter
+    local x = 0
+    for idx, cf in ipairs(present) do
+        local b = filterIcons[idx]
+        if not b then b = CreateFilterIcon(); filterIcons[idx] = b end
+        b.classFile = cf
+        b:ClearAllPoints()
+        b:SetPoint("LEFT", filterBar, "LEFT", x, 0)
+        x = x + ICON_SIZE + ICON_GAP
+        local tc = CLASS_ICON_TCOORDS and CLASS_ICON_TCOORDS[cf]
+        if tc then b.tex:SetTexCoord(tc[1], tc[2], tc[3], tc[4]) end
+        local hidden = db[cf] and true or false
+        b.tex:SetDesaturated(hidden)
+        b.tex:SetAlpha(hidden and 0.35 or 1)
+        b:Show()
+    end
+    for i = #present + 1, #filterIcons do filterIcons[i]:Hide() end
+end
+
 local function EnsurePanel()
     if panel then return end
     panel = CreateFrame("Frame", "SpotMePartyPanel", UIParent, "BackdropTemplate")
-    panel:SetSize(PANEL_W, HEADER_H + ROW_H + PAD)
+    panel:SetSize(PANEL_W, HEADER_H + FILTER_H + ROW_H + PAD)
     panel:SetBackdrop({
         bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
         edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -215,13 +274,18 @@ local function EnsurePanel()
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 1, 1)
 
+    filterBar = CreateFrame("Frame", nil, panel)
+    filterBar:SetPoint("TOPLEFT", PAD, -HEADER_H - 2)
+    filterBar:SetPoint("TOPRIGHT", -PAD, -HEADER_H - 2)
+    filterBar:SetHeight(ICON_SIZE)
+
     local empty = panel:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-    empty:SetPoint("TOP", 0, -(HEADER_H + 10))
+    empty:SetPoint("TOP", 0, -(HEADER_H + FILTER_H + 10))
     empty:SetText(L.PL_NOPARTY)
     panel.empty = empty
 
     local scroll = CreateFrame("ScrollFrame", "SpotMePartyScroll", panel, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", PAD, -HEADER_H)
+    scroll:SetPoint("TOPLEFT", PAD, -(HEADER_H + FILTER_H))
     scroll:SetPoint("BOTTOMRIGHT", -PAD - 4, PAD)
     scroll:EnableMouseWheel(true)
     scroll:SetScript("OnMouseWheel", function(self, delta)
@@ -235,8 +299,6 @@ local function EnsurePanel()
     content:SetSize(ROW_W, 1)
     scroll:SetScrollChild(content)
 
-    rowPool = {}
-
     local pt = ns.GetCfg().partyPanel
     if pt and pt[1] then
         panel:SetPoint(pt[1], UIParent, pt[2], pt[3], pt[4])
@@ -246,49 +308,69 @@ local function EnsurePanel()
     panel:Hide()
 end
 
-local function Refresh()
+function Refresh()
     if not panel or not panel:IsShown() then return end
 
     if not IsInGroup() then
         panel.title:SetText("SpotMe · " .. L.PL_TITLE)
         panel.empty:Show()
         for _, row in pairs(rowPool) do row:Hide() end
+        for _, b in pairs(filterIcons) do b:Hide() end
         content:SetHeight(1)
-        panel:SetHeight(HEADER_H + 48)
+        panel:SetHeight(HEADER_H + FILTER_H + 44)
         return
     end
     panel.empty:Hide()
 
     local units = BuildUnitList()
-    for i, unit in ipairs(units) do
-        local row = AcquireRow(i)
-        row.unit = unit
-        row:Show()
-        local r, g, b = ClassColor(unit)
-        row.nameFS:SetText(UnitName(unit) or "?")
-        row.nameFS:SetTextColor(r, g, b)
-        row.accent:SetColorTexture(r, g, b, 0.9)
-        row.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.05 or 0.0)
+    local db = ns.GetCfg().classFilter
 
-        local mapID, x, y = UnitMapPos(unit)
-        if mapID then
-            row.coordText = string.format("%.1f, %.1f", x * 100, y * 100)
-            row.coordsFS:SetText(row.coordText)
-            row.coordsFS:SetTextColor(0.85, 0.85, 0.85)
-            row.copyBtn:Enable()
-        else
-            row.coordText = nil
-            row.coordsFS:SetText(L.PL_OUTOFAREA)
-            row.coordsFS:SetTextColor(0.5, 0.5, 0.5)
-            row.copyBtn:Disable()
+    -- classes present in the group, in fixed order
+    local presentSet, present = {}, {}
+    for _, unit in ipairs(units) do
+        local cf = ClassFile(unit)
+        if cf then presentSet[cf] = true end
+    end
+    for _, cf in ipairs(CLASS_ORDER) do
+        if presentSet[cf] then present[#present + 1] = cf end
+    end
+    RebuildFilterBar(present)
+
+    -- rows, filtered by class
+    local n = 0
+    for _, unit in ipairs(units) do
+        local cf = ClassFile(unit)
+        if not (cf and db[cf]) then
+            n = n + 1
+            local row = AcquireRow(n)
+            row.unit = unit
+            row:Show()
+            local r, g, b = ClassColor(unit)
+            row.nameFS:SetText(UnitName(unit) or "?")
+            row.nameFS:SetTextColor(r, g, b)
+            row.accent:SetColorTexture(r, g, b, 0.9)
+            row.bg:SetColorTexture(1, 1, 1, (n % 2 == 0) and 0.05 or 0.0)
+
+            local mapID, x, y = UnitMapPos(unit)
+            if mapID then
+                row.coordText = string.format("%.1f, %.1f", x * 100, y * 100)
+                row.coordsFS:SetText(row.coordText)
+                row.coordsFS:SetTextColor(0.85, 0.85, 0.85)
+                row.copyBtn:Enable()
+            else
+                row.coordText = nil
+                row.coordsFS:SetText(L.PL_OUTOFAREA)
+                row.coordsFS:SetTextColor(0.5, 0.5, 0.5)
+                row.copyBtn:Disable()
+            end
         end
     end
-    for i = #units + 1, #rowPool do rowPool[i]:Hide() end
+    for i = n + 1, #rowPool do rowPool[i]:Hide() end
 
-    content:SetHeight(math.max(1, #units * ROW_H))
-    local vis = math.min(#units, MAX_VIS)
-    panel:SetHeight(HEADER_H + vis * ROW_H + PAD)
-    panel.title:SetText(string.format("SpotMe · %s  (%d)", L.PL_TITLE, #units))
+    content:SetHeight(math.max(1, n * ROW_H))
+    local vis = math.max(1, math.min(n, MAX_VIS))
+    panel:SetHeight(HEADER_H + FILTER_H + vis * ROW_H + PAD)
+    panel.title:SetText(string.format("SpotMe · %s  (%d)", L.PL_TITLE, n))
 end
 
 function ns.ToggleParty()
@@ -376,7 +458,7 @@ end)
 
 local roster = CreateFrame("Frame")
 roster:RegisterEvent("GROUP_ROSTER_UPDATE")
-roster:SetScript("OnEvent", Refresh)
+roster:SetScript("OnEvent", function() Refresh() end)
 
 -- Follow the highlighted member (~33/s) and refresh coords in the panel (~5/s).
 local ticker = CreateFrame("Frame")

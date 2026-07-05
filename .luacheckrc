@@ -44,4 +44,6 @@ read_globals = {
     "GetCursorPosition",
     "ShowUIPanel",
     "GameTooltip",
+    "CLASS_ICON_TCOORDS",
+    "LOCALIZED_CLASS_NAMES_MALE",
 }
