@@ -2,3 +2,7 @@
 Thumbs.db
 *.bak
 *.tmp
+
+# Internal / dev-only — kept local, not published to the public repo
+CLAUDE.md
+research/
