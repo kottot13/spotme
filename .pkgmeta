@@ -16,6 +16,7 @@ ignore:
   - "media"
   - "store-description.md"
   - "CLAUDE.md"
+  - "research"
 
 # No external libraries yet. If you later embed some (Ace3, LibStub,
 # HereBeDragons), add them here, e.g.:
