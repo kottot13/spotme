@@ -205,7 +205,7 @@ local function GetDot(i)
         d = CreateFrame("Frame", nil, pathParent)   -- positioner (canvas coords, scale 1)
         d:SetSize(1, 1)
         local inner = CreateFrame("Frame", nil, d)   -- constant on-screen size (counter-scaled)
-        inner:SetSize(18, 18)
+        inner:SetSize(24, 24)
         inner:SetPoint("CENTER")
         local back = inner:CreateTexture(nil, "ARTWORK")
         back:SetTexture("Interface\\Masks\\CircleMaskScalable")
@@ -214,7 +214,7 @@ local function GetDot(i)
         local fill = inner:CreateTexture(nil, "OVERLAY")
         fill:SetTexture("Interface\\Masks\\CircleMaskScalable")
         fill:SetPoint("CENTER")
-        fill:SetSize(12, 12)
+        fill:SetSize(16, 16)
         inner.fill = fill
         d.inner = inner
         pathDots[i] = d
