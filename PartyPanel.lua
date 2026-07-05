@@ -168,11 +168,24 @@ local function EnsureArrow()
     arrow:SetScript("OnDragStart", arrow.StartMoving)
     arrow:SetScript("OnDragStop", function()
         arrow:StopMovingOrSizing()
+        arrow.didDrag = true   -- the mouse-up that ends a drag is not a click
         local p, _, rp, x, y = arrow:GetPoint()
         ns.GetCfg().navArrow = { p, rp, x, y }
     end)
+    -- Right-click OR double left-click clears navigation (no need to open the map).
     arrow:SetScript("OnMouseUp", function(_, btn)
-        if btn == "RightButton" then ClearNav() end
+        if btn == "RightButton" then
+            ClearNav()
+        elseif btn == "LeftButton" then
+            if arrow.didDrag then arrow.didDrag = false; return end
+            local t = GetTime()
+            if t - (arrow.lastLeftUp or 0) <= 0.4 then
+                arrow.lastLeftUp = 0
+                ClearNav()
+            else
+                arrow.lastLeftUp = t
+            end
+        end
     end)
 
     -- black outline behind for pop/contrast
