@@ -1,0 +1,18 @@
+## Interface: 120007
+## Title: SpotMe
+## Notes: Highlights your position with a customizable animated glow on the world map and minimap, so you can spot yourself at a glance.
+## Notes-ruRU: Подсвечивает твою позицию настраиваемым анимированным свечением на большой карте и миникарте — чтобы находить себя мгновенно.
+## Author: mpak
+## Version: 0.11.0
+## SavedVariables: SpotMeDB
+## IconTexture: Interface\Icons\INV_Misc_Map_01
+## X-Category: Map & Minimap
+## X-License: MIT
+## X-Website: https://github.com/kottot13/spotme
+# After creating the projects, fill in their IDs (remove the leading # on the line):
+# ## X-Curse-Project-ID: 123456
+# ## X-Wago-ID: aBcDeFgH
+# ## X-WoWI-ID: 26666
+
+Locale.lua
+Core.lua

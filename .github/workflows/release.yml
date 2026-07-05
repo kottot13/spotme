@@ -1,0 +1,28 @@
+name: Package and release
+
+# Runs when a tag is pushed (e.g. v0.11.0). The tag is the version number.
+on:
+  push:
+    tags:
+      - '**'
+
+# Required so the packager can create a GitHub Release
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}         # CurseForge
+      WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }} # Wago Addons
+      WOWI_API_TOKEN: ${{ secrets.WOWI_API_TOKEN }} # WoWInterface (optional)
+      GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}     # GitHub Releases (built-in)
+    steps:
+      - name: Clone project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history — for the auto-generated changelog
+
+      - name: Package and release
+        uses: BigWigsMods/packager@v2

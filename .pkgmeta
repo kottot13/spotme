@@ -1,0 +1,15 @@
+# BigWigsMods packager config (github.com/BigWigsMods/packager).
+# Enough for a simple single-folder addon.
+
+package-as: SpotMe
+
+# Keep non-addon files out of the packaged zip:
+ignore:
+  - ".github"
+  - ".gitignore"
+  - "media"
+
+# No external libraries yet. If you later embed some (Ace3, LibStub,
+# HereBeDragons), add them here, e.g.:
+# externals:
+#   Libs/LibStub: https://repos.wowace.com/wow/libstub/trunk
