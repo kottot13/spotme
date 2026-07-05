@@ -222,7 +222,6 @@ local DASH_TEX   = "Interface\\Buttons\\WHITE8X8"
 local ARROW_TEX  = "Interface\\Minimap\\MinimapArrow"
 -- Flip if dashes/arrows point the wrong way in game.
 local DASH_ROT_SIGN, ARROW_ROT_SIGN = 1, 1
-local FLOW_SPEED = 34   -- screen px/sec for the "marching" animation
 
 -- texture + fill(w,h) + back(w,h) for a marker style
 local function MarkerDims(style, size, rim)
@@ -405,28 +404,13 @@ local function NavTargetMapPos(mapID)
         if navPoint.mapID == mapID then
             return navPoint.x, navPoint.y   -- same map: stored coords
         end
-        -- Blizzard's own cross-map translation of our waypoint (parent/child/sibling zones)
-        if C_Map.GetUserWaypointPositionForMap then
-            local wp = C_Map.GetUserWaypointPositionForMap(mapID)
-            if wp then local x, y = wp:GetXY(); if x then return x, y end end
-        end
-        -- fallback: project via world coordinates
-        local _, w2 = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
-        if w2 then
-            local mx, my = WorldToMapPos(mapID, w2.x, w2.y)
+        -- different (but related) map: translate via world position, like a unit pin
+        local _, wp = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+        if wp then
+            local mx, my = WorldToMapPos(mapID, wp.x, wp.y)
             if mx then return mx, my end
         end
     end
-    return nil
-end
-
--- Player position (0-1) on a given ui map. Projects via world coords when the
--- player is not standing in the viewed zone, so the path shows on other zones too.
-local function PlayerMapPos(mapID)
-    local p = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
-    if p then local x, y = p:GetXY(); if x then return x, y end end
-    local py, px = UnitPosition("player")
-    if py and mapID then return WorldToMapPos(mapID, py, px) end
     return nil
 end
 
@@ -476,9 +460,10 @@ function UpdateNav()
     local wcfg = ns.GetCfg()
     if wcfg.ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
-        local pmx, pmy = PlayerMapPos(mapID)
+        local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
         local tmx, tmy = NavTargetMapPos(mapID)
-        if pmx and tmx then
+        if pp and tmx then
+            local pmx, pmy = pp:GetXY()
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
             local zoom = ns.CanvasZoom()
@@ -507,7 +492,7 @@ function UpdateNav()
                 local stepU = (zoom > 0) and (wcfg.ndWorldGap / zoom) or (math.min(w, h) * 0.02)
                 local rot = (style == "dashes" or style == "arrows")
                 local ang = rot and MarkerAngle(style, dxp, -dyp) or 0
-                local phase = (wcfg.ndWorldAnim and stepU > 0) and ((GetTime() * FLOW_SPEED * isc) % stepU) or 0
+                local phase = (wcfg.ndWorldAnim and stepU > 0) and ((GetTime() * wcfg.ndWorldFlow * isc) % stepU) or 0
                 local n, dd = 0, (phase > 0 and phase or stepU)
                 while stepU > 0 and dd < pathU and n < 200 do
                     local t = dd / pathU
@@ -573,7 +558,7 @@ function UpdateNav()
                 local rot = (style == "dashes" or style == "arrows")
                 local ang = rot and MarkerAngle(style, ux, uy) or 0
                 local step = mcfg.ndMiniGap
-                local phase = (mcfg.ndMiniAnim and step > 0) and ((GetTime() * FLOW_SPEED) % step) or 0
+                local phase = (mcfg.ndMiniAnim and step > 0) and ((GetTime() * mcfg.ndMiniFlow) % step) or 0
                 local n, dd = 0, (phase > 0 and phase or step)
                 while dd <= pixelLen do
                     n = n + 1

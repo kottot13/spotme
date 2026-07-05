@@ -77,8 +77,8 @@ local DEFAULTS = {
     dotColor      = "class",    -- path-dot color (same palette)
     -- navigation path markers (dots|dashes|arrows|line), colored core + black outline,
     -- per map, plus spacing and a "flowing" animation
-    ndWorldShow = true, ndWorldStyle = "dots", ndWorldSize = 16, ndWorldRim = 4, ndWorldRimOn = true, ndWorldGap = 26, ndWorldAnim = false,
-    ndMiniShow  = true, ndMiniStyle  = "dots", ndMiniSize  = 8,  ndMiniRim  = 2, ndMiniRimOn  = true, ndMiniGap  = 12, ndMiniAnim  = false,
+    ndWorldShow = true, ndWorldStyle = "dots", ndWorldSize = 16, ndWorldRim = 4, ndWorldRimOn = true, ndWorldGap = 26, ndWorldAnim = false, ndWorldFlow = 34,
+    ndMiniShow  = true, ndMiniStyle  = "dots", ndMiniSize  = 8,  ndMiniRim  = 2, ndMiniRimOn  = true, ndMiniGap  = 12, ndMiniAnim  = false, ndMiniFlow  = 34,
 }
 
 --=============================================================================
@@ -479,6 +479,8 @@ local function SetupPanel()
         function() return cfg.ndWorldGap end, function(v) cfg.ndWorldGap = v end)
     checkbox("ndWorldAnim", L.ND_ANIM, nil,
         function() return cfg.ndWorldAnim end, function(v) cfg.ndWorldAnim = v end)
+    slider("ndWorldFlow", L.ND_SPEED, nil, 5, 120, 5,
+        function() return cfg.ndWorldFlow end, function(v) cfg.ndWorldFlow = v end)
 
     header(L.NAVDOTS_MINI)
     checkbox("ndMiniShow", L.ND_SHOW, nil,
@@ -496,6 +498,8 @@ local function SetupPanel()
         function() return cfg.ndMiniGap end, function(v) cfg.ndMiniGap = v end)
     checkbox("ndMiniAnim", L.ND_ANIM, nil,
         function() return cfg.ndMiniAnim end, function(v) cfg.ndMiniAnim = v end)
+    slider("ndMiniFlow", L.ND_SPEED, nil, 5, 120, 5,
+        function() return cfg.ndMiniFlow end, function(v) cfg.ndMiniFlow = v end)
 
     if Settings.RegisterAddOnCategory then Settings.RegisterAddOnCategory(category) end
     panelCategory = category

@@ -38,6 +38,7 @@ local L = {
     ND_ARROWS    = "Arrows",
     ND_LINE      = "Line",
     ND_ANIM      = "Animate (flow)",
+    ND_SPEED     = "Animation speed",
     ND_SIZE      = "Dot size",
     ND_RIM       = "Black outline",
     ND_RIMW      = "Outline width",
@@ -144,6 +145,7 @@ if GetLocale() == "ruRU" then
     L.ND_ARROWS    = "Стрелки"
     L.ND_LINE      = "Линия"
     L.ND_ANIM      = "Анимация (бегущие)"
+    L.ND_SPEED     = "Скорость анимации"
     L.ND_SIZE      = "Размер точек"
     L.ND_RIM       = "Чёрная обводка"
     L.ND_RIMW      = "Толщина обводки"
