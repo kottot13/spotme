@@ -157,8 +157,18 @@ local NAV_COLORS = {
     red    = { 1.00, 0.15, 0.15 }, cyan   = { 0.25, 0.80, 1.00 },
     green  = { 0.20, 1.00, 0.35 }, yellow = { 1.00, 0.90, 0.20 },
     black  = { 0.05, 0.05, 0.05 }, white  = { 1.00, 1.00, 1.00 },
+    pink   = { 1.00, 0.40, 0.75 },
 }
 local UpdateNav, ClearNav   -- forward declarations
+
+-- Resolve a color choice ("class" or a NAV_COLORS palette key) to r, g, b.
+-- "class" falls back to the target unit's class color, or the player's for a map point.
+local function ResolveNavColor(choice)
+    local ccol = NAV_COLORS[choice or "class"]
+    if ccol then return ccol[1], ccol[2], ccol[3] end
+    if navUnit then return ClassColor(navUnit) end
+    return ClassColor("player")
+end
 
 local function EnsureArrow()
     if arrow then return end
@@ -369,11 +379,9 @@ function UpdateNav()
     EnsureMapClearBtn()
     if mapClearBtn then mapClearBtn:SetShown(WorldMapFrame:IsShown()) end
 
-    -- nav color: palette color, else class color (target's, or the player's for a point)
-    local ccol = NAV_COLORS[ns.GetCfg().navColor or "class"]
-    if ccol then navR, navG, navB = ccol[1], ccol[2], ccol[3]
-    elseif navUnit then navR, navG, navB = ClassColor(navUnit)
-    else navR, navG, navB = ClassColor("player") end
+    -- arrow color (navColor) and dot color (dotColor) resolved independently
+    navR, navG, navB = ResolveNavColor(ns.GetCfg().navColor)
+    local dotR, dotG, dotB = ResolveNavColor(ns.GetCfg().dotColor)
 
     -- world position of the player and the target (for the arrow + distance)
     local py, px, _, pI = UnitPosition("player")
@@ -428,7 +436,7 @@ function UpdateNav()
                 d:ClearAllPoints()
                 d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
                 d.inner:SetScale(isc)
-                d.inner.fill:SetVertexColor(navR, navG, navB)
+                d.inner.fill:SetVertexColor(dotR, dotG, dotB)
                 d:Show()
                 dd = dd + stepU
             end
@@ -466,7 +474,7 @@ function UpdateNav()
                 local d = GetMiniDot(n)
                 d:ClearAllPoints()
                 d:SetPoint("CENTER", Minimap, "CENTER", ux * dd, uy * dd)
-                d.fill:SetVertexColor(navR, navG, navB)
+                d.fill:SetVertexColor(dotR, dotG, dotB)
                 d:Show()
                 dd = dd + step
             end
