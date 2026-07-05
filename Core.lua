@@ -73,6 +73,7 @@ local DEFAULTS = {
     classFilter   = {},
     sortMode      = "roster",   -- roster | near | far | class
     navArrow      = {},
+    navColor      = "class",    -- class | red | cyan | green | yellow | black | white
 }
 
 --=============================================================================
@@ -400,6 +401,20 @@ local function SetupPanel()
         function(v) SetColorChoice(v) end)
     checkbox("flicker", L.FLICKER_CB, L.FLICKER_TIP,
         function() return cfg.flicker end, function(v) cfg.flicker = v end)
+    dropdown("navColor", L.NAVCOL_LBL, L.NAVCOL_TIP,
+        function() return cfg.navColor end,
+        function()
+            local c = Settings.CreateControlTextContainer()
+            c:Add("class", L.NAVCOL_CLASS)
+            c:Add("red", L.NAVCOL_RED)
+            c:Add("cyan", L.NAVCOL_CYAN)
+            c:Add("green", L.NAVCOL_GREEN)
+            c:Add("yellow", L.NAVCOL_YELLOW)
+            c:Add("black", L.NAVCOL_BLACK)
+            c:Add("white", L.NAVCOL_WHITE)
+            return c:GetData()
+        end,
+        function(v) cfg.navColor = v end)
 
     header(L.SIZES)
     slider("arrowSize", L.ARROW_SL, L.ARROW_TIP, 20, 80, 1,
@@ -504,6 +519,10 @@ SlashCmdList.SPOTME = function(msg)
         if ns.ToggleMinimapButton then
             say(string.format(L.PL_BUTTON_STATE, ns.ToggleMinimapButton() and L.ON or L.OFF))
         end
+    elseif cmd == "navcolor" then
+        local okcol = { class = 1, red = 1, cyan = 1, green = 1, yellow = 1, black = 1, white = 1 }
+        if okcol[rest] then cfg.navColor = rest; say(string.format(L.NAVCOL_SET, rest))
+        else say(L.NAVCOL_FMT) end
     elseif cmd == "theme" then
         if THEMES[rest] then ApplyTheme(rest); say(string.format(L.THEME_SET, L["T_" .. rest] or rest))
         else say(string.format(L.THEMES_LIST, table.concat(THEME_ORDER, " "))) end

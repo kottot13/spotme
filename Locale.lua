@@ -78,7 +78,18 @@ local L = {
     PL_SORT_CLASS   = "By class",
     PL_YD           = "yd",
     PL_YOU          = "you",
-    PL_ROW_TIP      = "Left-click: show on map · Right-click: set waypoint",
+    PL_ROW_TIP      = "Left-click: show on map · Right-click: navigate",
+    NAVCOL_LBL      = "Navigation color",
+    NAVCOL_TIP      = "Color of the arrow and path dots",
+    NAVCOL_CLASS    = "By class",
+    NAVCOL_RED      = "Red",
+    NAVCOL_CYAN     = "Cyan",
+    NAVCOL_GREEN    = "Green",
+    NAVCOL_YELLOW   = "Yellow",
+    NAVCOL_BLACK    = "Black",
+    NAVCOL_WHITE    = "White",
+    NAVCOL_SET      = "navigation color: %s",
+    NAVCOL_FMT      = "navcolor: class|red|cyan|green|yellow|black|white",
 }
 
 -- ===== ruRU =====
@@ -151,7 +162,18 @@ if GetLocale() == "ruRU" then
     L.PL_SORT_CLASS   = "По классу"
     L.PL_YD           = "яр"
     L.PL_YOU          = "вы"
-    L.PL_ROW_TIP      = "ЛКМ: показать на карте · ПКМ: поставить маяк"
+    L.PL_ROW_TIP      = "ЛКМ: показать на карте · ПКМ: навигация"
+    L.NAVCOL_LBL      = "Цвет навигации"
+    L.NAVCOL_TIP      = "Цвет стрелки и точек пути"
+    L.NAVCOL_CLASS    = "По классу"
+    L.NAVCOL_RED      = "Красный"
+    L.NAVCOL_CYAN     = "Голубой"
+    L.NAVCOL_GREEN    = "Зелёный"
+    L.NAVCOL_YELLOW   = "Жёлтый"
+    L.NAVCOL_BLACK    = "Чёрный"
+    L.NAVCOL_WHITE    = "Белый"
+    L.NAVCOL_SET      = "цвет навигации: %s"
+    L.NAVCOL_FMT      = "navcolor: class|red|cyan|green|yellow|black|white"
 end
 
 ns.L = L

@@ -152,6 +152,11 @@ local pathDots = {}
 local NAV_DOTS = 22
 -- If the arrow points the wrong way in game, flip SIGN (1/-1) or add pi to OFFSET.
 local NAV_ROT_SIGN, NAV_ROT_OFFSET = -1, 0
+local NAV_COLORS = {
+    red    = { 1.00, 0.15, 0.15 }, cyan   = { 0.25, 0.80, 1.00 },
+    green  = { 0.20, 1.00, 0.35 }, yellow = { 1.00, 0.90, 0.20 },
+    black  = { 0.05, 0.05, 0.05 }, white  = { 1.00, 1.00, 1.00 },
+}
 local UpdateNav, ClearNav   -- forward declarations
 
 local function EnsureArrow()
@@ -253,6 +258,11 @@ function UpdateNav()
         HideMiniDots()
         return
     end
+
+    -- nav color: class by default, or a fixed palette color
+    local ccol = NAV_COLORS[ns.GetCfg().navColor or "class"]
+    if ccol then navR, navG, navB = ccol[1], ccol[2], ccol[3]
+    else navR, navG, navB = ClassColor(navUnit) end
 
     -- on-screen arrow
     local py, px, _, pI = UnitPosition("player")
