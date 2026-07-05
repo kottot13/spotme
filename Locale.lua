@@ -64,6 +64,14 @@ local L = {
     COLOR_DONE   = "color set",
     COLOR_FMT    = "format: /sm color 1.0 0.3 0.95",
     UNKNOWN      = "unknown. /sm help — commands, /sm — settings panel",
+    -- party locator
+    PL_TITLE        = "Party",
+    PL_OUTOFAREA    = "out of area",
+    PL_COPY         = "Copy",
+    PL_NOPARTY      = "You are not in a party",
+    PL_BTN_TIP      = "Click: party locator",
+    PL_BUTTON_STATE = "minimap button: %s",
+    HELP_PARTY      = "party: party (open list) | button (minimap button)",
 }
 
 -- ===== ruRU =====
@@ -123,6 +131,13 @@ if GetLocale() == "ruRU" then
     L.COLOR_DONE   = "цвет задан"
     L.COLOR_FMT    = "формат: /sm color 1.0 0.3 0.95"
     L.UNKNOWN      = "неизвестно. /sm help — команды, /sm — панель настроек"
+    L.PL_TITLE        = "Пати"
+    L.PL_OUTOFAREA    = "вне зоны"
+    L.PL_COPY         = "Копировать"
+    L.PL_NOPARTY      = "Вы не в группе"
+    L.PL_BTN_TIP      = "Клик: список пати"
+    L.PL_BUTTON_STATE = "кнопка на миникарте: %s"
+    L.HELP_PARTY      = "пати: party (список) | button (кнопка на миникарте)"
 end
 
 ns.L = L

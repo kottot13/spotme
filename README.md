@@ -22,6 +22,7 @@ it correctly); it just makes it easy to spot.
 - 🌈 **Any color** — 12 presets, a rainbow mode, your class color, or a custom RGB value.
 - ✨ **Smooth animation** — breathing core, phase-shifted expanding rings, soft flicker.
 - ⚙️ **In-game options panel** (native Settings UI) and full slash commands.
+- 👥 **Party locator** — a minimap button opens a scrollable panel of your party or raid with class-colored names, live coordinates and a copy button; click a member to open the map on their location with a class-colored glow.
 - 🌍 **Localized** — shows in your client's language (English / Russian, more easy to add).
 - 🪶 Lightweight, no external libraries.
 
@@ -67,6 +68,12 @@ Open the panel with **`/sm`** (or `Esc → Options → AddOns → SpotMe`), or u
 | `/sm flicker` | toggle the soft brightness flicker |
 | `/sm status` | show current state |
 | `/sm reset` | reset all settings |
+
+**Party locator**
+| Command | Action |
+| --- | --- |
+| `/sm party` | open the party/raid locator panel |
+| `/sm button` | show/hide the minimap button |
 
 Aliases: `/spotme`, `/sm`, `/fa`.
 

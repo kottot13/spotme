@@ -3,7 +3,7 @@
 ## Notes: Highlights your position with a customizable animated glow on the world map and minimap, so you can spot yourself at a glance.
 ## Notes-ruRU: Подсвечивает твою позицию настраиваемым анимированным свечением на большой карте и миникарте — чтобы находить себя мгновенно.
 ## Author: mpak
-## Version: 0.11.1
+## Version: 0.12.0
 ## SavedVariables: SpotMeDB
 ## IconTexture: Interface\Icons\INV_Misc_Map_01
 ## X-Category: Map & Minimap
@@ -16,3 +16,4 @@
 
 Locale.lua
 Core.lua
+PartyPanel.lua

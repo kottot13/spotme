@@ -67,6 +67,9 @@ local DEFAULTS = {
     flicker      = true,
     flickerSpeed = 3.2,
     spin         = 0,
+    -- party locator
+    minimapButton = { angle = 214, hide = false },
+    partyPanel    = {},
 }
 
 --=============================================================================
@@ -420,6 +423,13 @@ local function OpenPanel()
 end
 
 --=============================================================================
+-- Exports for PartyPanel.lua (party locator feature)
+--=============================================================================
+ns.BuildGlow = BuildGlow
+ns.CanvasZoom = CanvasZoom
+function ns.GetCfg() return cfg end
+
+--=============================================================================
 -- Loading
 --=============================================================================
 local loader = CreateFrame("Frame")
@@ -473,6 +483,7 @@ SlashCmdList.SPOTME = function(msg)
         if not OpenPanel() then say(L.PANEL_NA) end
     elseif cmd == "help" then
         say(L.HELP_SCREENS)
+        say(L.HELP_PARTY)
         say(string.format(L.HELP_THEMES, table.concat(THEME_ORDER, "/")))
         say(string.format(L.HELP_COLORS, table.concat(COLOR_ORDER, " ")))
         say(L.HELP_MISC)
@@ -484,6 +495,12 @@ SlashCmdList.SPOTME = function(msg)
         SetWorld(true); SetMinimap(true); say(L.ALL_ON)
     elseif cmd == "off" then
         SetWorld(false); SetMinimap(false); say(L.ALL_OFF)
+    elseif cmd == "party" then
+        if ns.ToggleParty then ns.ToggleParty() end
+    elseif cmd == "button" then
+        if ns.ToggleMinimapButton then
+            say(string.format(L.PL_BUTTON_STATE, ns.ToggleMinimapButton() and L.ON or L.OFF))
+        end
     elseif cmd == "theme" then
         if THEMES[rest] then ApplyTheme(rest); say(string.format(L.THEME_SET, L["T_" .. rest] or rest))
         else say(string.format(L.THEMES_LIST, table.concat(THEME_ORDER, " "))) end

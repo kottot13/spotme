@@ -17,6 +17,7 @@ It doesn't replace your arrow or hide anything. The game keeps drawing and rotat
 - **Any color you like** — 12 presets, a smooth rainbow cycle, your class color, or a custom RGB value.
 - **Smooth, subtle animation** — a breathing core, phase-shifted expanding rings and a soft flicker. Nothing flashy or distracting.
 - **In-game options panel** (native WoW Settings UI) plus full slash commands.
+- **Party locator** — a minimap button opens a scrollable list of your party or raid: class-colored names, live coordinates, a copy button, and click-to-show-on-map with a class-colored glow.
 - **Localized** — displayed in your client's language (English and Russian, with more easy to add).
 - **Lightweight** — no external libraries, no measurable performance cost.
 
@@ -29,6 +30,7 @@ Open the options panel with **/sm** (or Esc → Options → AddOns → SpotMe), 
 - `/sm theme fire` — switch theme (arcane, fire, lightning, ice, holy, shadow)
 - `/sm rainbow` · `/sm class` · `/sm neon` … — change color
 - `/sm glowsize 85` — adjust the glow size
+- `/sm party` — open the party/raid locator
 - `/sm help` — full command list
 
 ## Feedback

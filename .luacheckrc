@@ -33,4 +33,15 @@ read_globals = {
     "Settings",
     "CreateSettingsListSectionHeaderInitializer",
     "GroupMembersPinMixin",
+    -- party locator
+    "UIParent",
+    "UnitExists",
+    "UnitName",
+    "IsInGroup",
+    "IsInRaid",
+    "GetNumGroupMembers",
+    "GetNumSubgroupMembers",
+    "GetCursorPosition",
+    "ShowUIPanel",
+    "GameTooltip",
 }
