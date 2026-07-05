@@ -149,7 +149,7 @@ local navUnit
 local navR, navG, navB = 1, 1, 1
 local arrow, pathParent
 local pathDots = {}
-local NAV_DOTS = 16
+local NAV_DOTS = 22
 -- If the arrow points the wrong way in game, flip SIGN (1/-1) or add pi to OFFSET.
 local NAV_ROT_SIGN, NAV_ROT_OFFSET = -1, 0
 local UpdateNav, ClearNav   -- forward declarations
@@ -198,11 +198,21 @@ local function GetDot(i)
             pathParent:SetAllPoints()
             pathParent:SetFrameStrata("HIGH")
         end
-        d = pathParent:CreateTexture(nil, "OVERLAY")
-        d:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
-        d:SetDesaturated(true)
-        d:SetBlendMode("ADD")
-        d:SetSize(10, 10)
+        d = CreateFrame("Frame", nil, pathParent)
+        d:SetSize(22, 22)
+        -- dark halo for contrast on bright maps
+        local back = d:CreateTexture(nil, "ARTWORK")
+        back:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
+        back:SetDesaturated(true)
+        back:SetVertexColor(0, 0, 0, 0.85)
+        back:SetAllPoints()
+        -- class-colored core
+        local fill = d:CreateTexture(nil, "OVERLAY")
+        fill:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
+        fill:SetDesaturated(true)
+        fill:SetPoint("CENTER")
+        fill:SetSize(15, 15)
+        d.fill = fill
         pathDots[i] = d
     end
     return d
@@ -255,7 +265,7 @@ function UpdateNav()
                 local d = GetDot(i)
                 d:ClearAllPoints()
                 d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
-                d:SetVertexColor(navR, navG, navB)
+                d.fill:SetVertexColor(navR, navG, navB)
                 d:Show()
             end
             for i = NAV_DOTS + 1, #pathDots do pathDots[i]:Hide() end
