@@ -461,9 +461,13 @@ function UpdateNav()
     local wcfg = ns.GetCfg()
     if wcfg.ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
+        local info = mapID and C_Map.GetMapInfo(mapID)
+        -- Only continent/zone/dungeon maps (mapType >= 2) have usable world coords;
+        -- the world & cosmic overviews (0-1) would project a point to a nonsense spot.
+        local usable = info and info.mapType and info.mapType >= 2
         local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
         local tmx, tmy = NavTargetMapPos(mapID)
-        if pp and tmx then
+        if usable and pp and tmx then
             local pmx, pmy = pp:GetXY()
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
