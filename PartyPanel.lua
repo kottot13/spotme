@@ -145,7 +145,7 @@ end
 --=============================================================================
 -- TomTom-style navigation: on-screen arrow + dotted map path (class colored)
 --=============================================================================
-local navUnit
+local navUnit, navPoint     -- navigating to a group member, or to a fixed map point
 local navR, navG, navB = 1, 1, 1
 local arrow, pathParent
 local pathDots = {}
@@ -262,33 +262,67 @@ local function HideMiniDots()
     for _, d in ipairs(miniDots) do d:Hide() end
 end
 
+-- Current nav target's world position (UnitPosition order: 1st ~ y/north,
+-- 2nd ~ x/east) + instance, used for the arrow bearing and distance.
+local function NavTargetWorld()
+    if navUnit then
+        if not UnitExists(navUnit) then return nil end
+        local ty, tx, _, tI = UnitPosition(navUnit)
+        return ty, tx, tI
+    elseif navPoint then
+        local cont, wp = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+        if cont and wp then return wp.x, wp.y, cont end   -- swap to wp.y, wp.x if the point arrow mirrors
+    end
+    return nil
+end
+
+-- Target position (0-1) on a given ui map, for the dotted paths.
+local function NavTargetMapPos(mapID)
+    if not mapID then return nil end
+    if navUnit then
+        local p = C_Map.GetPlayerMapPosition(mapID, navUnit)
+        if p then return p:GetXY() end
+    elseif navPoint and navPoint.mapID == mapID then
+        return navPoint.x, navPoint.y
+    end
+    return nil
+end
+
 function UpdateNav()
-    if not navUnit or not UnitExists(navUnit) then
+    if not navUnit and not navPoint then
         if arrow then arrow:Hide() end
         HideDots()
         HideMiniDots()
         return
     end
+    if navUnit and not UnitExists(navUnit) then ClearNav(); return end
 
-    -- nav color: class by default, or a fixed palette color
+    -- nav color: palette color, else class color (target's, or the player's for a point)
     local ccol = NAV_COLORS[ns.GetCfg().navColor or "class"]
     if ccol then navR, navG, navB = ccol[1], ccol[2], ccol[3]
-    else navR, navG, navB = ClassColor(navUnit) end
+    elseif navUnit then navR, navG, navB = ClassColor(navUnit)
+    else navR, navG, navB = ClassColor("player") end
+
+    -- world position of the player and the target (for the arrow + distance)
+    local py, px, _, pI = UnitPosition("player")
+    local ty, tx, tI = NavTargetWorld()
+    local facing = GetPlayerFacing()
+    local worldDist
+    if py and ty and pI == tI then
+        local ddx, ddy = tx - px, ty - py
+        worldDist = math.sqrt(ddx * ddx + ddy * ddy)
+    end
 
     -- on-screen arrow
-    local py, px, _, pI = UnitPosition("player")
-    local ty, tx, _, tI = UnitPosition(navUnit)
-    local facing = GetPlayerFacing()
     if arrow then
         if py and ty and pI == tI and facing then
             local dx, dy = tx - px, ty - py
-            local dist = math.sqrt(dx * dx + dy * dy)
             local bearing = math.atan2(dx, dy)
             local arot = NAV_ROT_SIGN * (facing - bearing) + NAV_ROT_OFFSET
             arrow.tex:SetRotation(arot)
             arrow.outline:SetRotation(arot)
             arrow.tex:SetVertexColor(navR, navG, navB)
-            arrow.dist:SetText(string.format("%d %s", dist, L.PL_YD))
+            arrow.dist:SetText(string.format("%d %s", worldDist or 0, L.PL_YD))
             arrow.dist:SetTextColor(navR, navG, navB)
             arrow:Show()
         else
@@ -300,10 +334,9 @@ function UpdateNav()
     if WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
         local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
-        local tp = mapID and C_Map.GetPlayerMapPosition(mapID, navUnit)
-        if pp and tp then
+        local tmx, tmy = NavTargetMapPos(mapID)
+        if pp and tmx then
             local pmx, pmy = pp:GetXY()
-            local tmx, tmy = tp:GetXY()
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
             local zoom = ns.CanvasZoom()
@@ -338,10 +371,9 @@ function UpdateNav()
     -- the world map), dots spaced by a fixed pixel step so they never overlap.
     local zmap = C_Map.GetBestMapForUnit("player")
     local pp = zmap and C_Map.GetPlayerMapPosition(zmap, "player")
-    local tp = zmap and C_Map.GetPlayerMapPosition(zmap, navUnit)
-    if pp and tp then
+    local tmx, tmy = NavTargetMapPos(zmap)
+    if pp and tmx then
         local pmx, pmy = pp:GetXY()
-        local tmx, tmy = tp:GetXY()
         local dirx, diry = tmx - pmx, -(tmy - pmy)   -- east = +x, north = -mapY (up)
         local len = math.sqrt(dirx * dirx + diry * diry)
         if len > 0.00001 then
@@ -353,8 +385,7 @@ function UpdateNav()
             end
             local radius = (C_Minimap and C_Minimap.GetViewRadius and C_Minimap.GetViewRadius()) or 200
             local half = Minimap:GetWidth() / 2
-            local worldDist = Distance(navUnit) or 0
-            local pixelLen = math.min(worldDist * (half / radius), half - 6)
+            local pixelLen = math.min((worldDist or 0) * (half / radius), half - 6)
             local step, n, dd = 12, 0, 12
             while dd <= pixelLen do
                 n = n + 1
@@ -376,6 +407,7 @@ end
 
 function ClearNav()
     navUnit = nil
+    navPoint = nil
     if arrow then arrow:Hide() end
     HideDots()
     HideMiniDots()
@@ -386,10 +418,40 @@ local function StartNav(unit)
     local mapID = UnitMapPos(unit)
     if not mapID then return end
     navUnit = unit
+    navPoint = nil
     navR, navG, navB = ClassColor(unit)
     EnsureArrow()
     WaypointTo(unit)   -- also drop the Blizzard minimap pin
     UpdateNav()
+end
+
+-- Navigate to any point on the world map (Shift + left-click on the map).
+local function StartNavToPoint(mapID, x, y)
+    navUnit = nil
+    navPoint = { mapID = mapID, x = x, y = y }
+    EnsureArrow()
+    if not (C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID)) then
+        C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x, y))
+        if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+        end
+    end
+    UpdateNav()
+end
+
+-- Shift + left-click anywhere on the world map starts a path to that spot.
+local function HookMapClick()
+    local sc = WorldMapFrame and WorldMapFrame.ScrollContainer
+    if not sc or sc.spotmeNavHooked then return end
+    sc.spotmeNavHooked = true
+    sc:HookScript("OnMouseUp", function(self, button)
+        if button ~= "LeftButton" or not IsShiftKeyDown() then return end
+        if not self.GetNormalizedCursorPosition then return end
+        local nx, ny = self:GetNormalizedCursorPosition()
+        if not nx or nx < 0 or nx > 1 or ny < 0 or ny > 1 then return end
+        local mapID = WorldMapFrame:GetMapID()
+        if mapID then StartNavToPoint(mapID, nx, ny) end
+    end)
 end
 
 --=============================================================================
@@ -587,24 +649,13 @@ local function EnsurePanel()
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 1, 1)
 
-    -- settings (gear) button, right of the title
-    local gear = CreateFrame("Button", nil, panel)
-    gear:SetSize(18, 18)
-    gear:SetPoint("LEFT", title, "RIGHT", 8, 0)
-    local gt = gear:CreateTexture(nil, "ARTWORK")
-    gt:SetAllPoints()
-    gt:SetTexture("Interface\\Icons\\INV_Misc_Gear_01")
-    gt:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    gear:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
-    local ghl = gear:GetHighlightTexture()
-    if ghl then ghl:SetColorTexture(1, 1, 1, 0.25) end
-    gear:SetScript("OnClick", function() if ns.OpenSettings then ns.OpenSettings() end end)
-    gear:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(L.PL_SETTINGS)
-        GameTooltip:Show()
-    end)
-    gear:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- settings button, same style as the sort ("By class") button, top-right
+    local setBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    setBtn:SetSize(80, 20)
+    setBtn:SetPoint("RIGHT", close, "LEFT", 0, -4)
+    setBtn:SetText(L.PL_SETTINGS)
+    setBtn:SetScript("OnClick", function() if ns.OpenSettings then ns.OpenSettings() end end)
+    panel.setBtn = setBtn
 
     local sortBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     sortBtn:SetSize(84, 20)
@@ -651,7 +702,7 @@ function Refresh()
     if not panel or not panel:IsShown() then return end
 
     if not IsInGroup() then
-        panel.title:SetText("SpotMe · " .. L.PL_TITLE)
+        panel.title:SetText(L.PL_TITLE)
         panel.empty:Show()
         for _, row in pairs(rowPool) do row:Hide() end
         for _, b in pairs(filterIcons) do b:Hide() end
@@ -742,7 +793,7 @@ function Refresh()
     content:SetHeight(math.max(1, n * ROW_H))
     local vis = math.max(1, math.min(n, MAX_VIS))
     panel:SetHeight(HEADER_H + FILTER_H + vis * ROW_H + PAD)
-    panel.title:SetText(string.format("SpotMe · %s  (%d)", L.PL_TITLE, n))
+    panel.title:SetText(string.format("%s  (%d)", L.PL_TITLE, n))
 end
 
 function ns.ToggleParty()
@@ -804,6 +855,7 @@ local function EnsureButton()
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine("SpotMe")
         GameTooltip:AddLine(L.PL_BTN_TIP, 1, 1, 1)
+        GameTooltip:AddLine(L.PL_MAP_HINT, 0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
     mbtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -826,6 +878,7 @@ loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
     EnsureButton()
     if mbtn then mbtn:SetShown(not ns.GetCfg().minimapButton.hide) end
+    HookMapClick()
 end)
 
 local roster = CreateFrame("Frame")
@@ -840,7 +893,7 @@ ticker:SetScript("OnUpdate", function(_, elapsed)
     if fastAcc >= 0.03 then
         fastAcc = 0
         if highlightUnit then UpdateHighlight() end
-        if navUnit then UpdateNav() end
+        if navUnit or navPoint then UpdateNav() end
     end
     slowAcc = slowAcc + elapsed
     if slowAcc >= 0.2 then

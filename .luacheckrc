@@ -52,4 +52,6 @@ read_globals = {
     "LOCALIZED_CLASS_NAMES_MALE",
     "UiMapPoint",
     "C_SuperTrack",
+    "IsShiftKeyDown",
+    "CreateVector2D",
 }
