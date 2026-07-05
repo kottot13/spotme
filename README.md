@@ -88,7 +88,7 @@ on-screen arrow plus a class-colored dotted trail on the world map and the minim
 list by class with the icon row, cycle the sort order (roster / nearest / farthest / by class) with
 the header button, and open this options panel with the settings button.
 
-Aliases: `/spotme`, `/sm`, `/fa`.
+Aliases: `/spotme`, `/sm`.
 
 ## How it works
 

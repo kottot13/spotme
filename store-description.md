@@ -49,7 +49,7 @@ Open the options panel with **/sm** (or Esc → Options → AddOns → SpotMe). 
 | `/sm status` | Print the current state in chat |
 | `/sm reset` | Reset all settings and reload |
 
-Aliases: **/spotme**, **/sm**, **/fa**.
+Aliases: **/spotme**, **/sm**.
 
 ## Mouse
 

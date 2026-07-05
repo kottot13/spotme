@@ -499,7 +499,6 @@ local function say(msg) print("|cffff33aaSpotMe|r: " .. msg) end
 
 SLASH_SPOTME1 = "/spotme"
 SLASH_SPOTME2 = "/sm"
-SLASH_SPOTME3 = "/fa"   -- legacy alias from the old name
 SlashCmdList.SPOTME = function(msg)
     msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
     local cmd, rest = msg:match("^(%S*)%s*(.*)$")

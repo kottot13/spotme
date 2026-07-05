@@ -293,14 +293,38 @@ local function NavTargetWorld()
     return nil
 end
 
+-- Convert a world position to 0-1 coords on a given ui map by solving the map's
+-- affine world<->map transform from three corners. Convention-agnostic (no axis
+-- guessing) and works across related maps, the way Blizzard resolves unit pins.
+local function WorldToMapPos(mapID, wx, wy)
+    local _, o  = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0, 0))
+    local _, ux = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(1, 0))
+    local _, uy = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0, 1))
+    if not (o and ux and uy) then return nil end
+    local axx, axy = ux.x - o.x, ux.y - o.y
+    local ayx, ayy = uy.x - o.x, uy.y - o.y
+    local det = axx * ayy - axy * ayx
+    if det == 0 then return nil end
+    local px, py = wx - o.x, wy - o.y
+    return (px * ayy - py * ayx) / det, (axx * py - axy * px) / det
+end
+
 -- Target position (0-1) on a given ui map, for the dotted paths.
 local function NavTargetMapPos(mapID)
     if not mapID then return nil end
     if navUnit then
         local p = C_Map.GetPlayerMapPosition(mapID, navUnit)
         if p then return p:GetXY() end
-    elseif navPoint and navPoint.mapID == mapID then
-        return navPoint.x, navPoint.y
+    elseif navPoint then
+        if navPoint.mapID == mapID then
+            return navPoint.x, navPoint.y   -- same map: use stored coords directly
+        end
+        -- different (but related) map: translate via world position, like a unit pin
+        local _, wp = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+        if wp then
+            local mx, my = WorldToMapPos(mapID, wp.x, wp.y)
+            if mx then return mx, my end
+        end
     end
     return nil
 end
@@ -366,7 +390,7 @@ function UpdateNav()
             local pathU = math.sqrt(dxp * dxp + dyp * dyp)
             local stepU = (zoom > 0) and (26 / zoom) or (math.min(w, h) * 0.02)  -- ~26 px between dots
             local n, dd = 0, stepU
-            while stepU > 0 and dd < pathU and n < 80 do
+            while stepU > 0 and dd < pathU and n < 200 do
                 local t = dd / pathU
                 n = n + 1
                 local mx = pmx + (tmx - pmx) * t

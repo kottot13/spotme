@@ -11,7 +11,6 @@ globals = {
     "SlashCmdList",
     "SLASH_SPOTME1",
     "SLASH_SPOTME2",
-    "SLASH_SPOTME3",
 }
 
 -- WoW API the addon reads (known names, not typos).
