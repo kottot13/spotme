@@ -71,7 +71,7 @@ local L = {
     PL_NOPARTY      = "You are not in a party",
     PL_BTN_TIP      = "Click: party locator",
     PL_BUTTON_STATE = "minimap button: %s",
-    HELP_PARTY      = "party: party (open list) | button (minimap button)",
+    HELP_PARTY      = "party: party | button | navcolor <color>  (right-click a member / Shift+click the map to route)",
     PL_SORT_ROSTER  = "Roster",
     PL_SORT_NEAR    = "Nearest",
     PL_SORT_FAR     = "Farthest",
@@ -158,7 +158,7 @@ if GetLocale() == "ruRU" then
     L.PL_NOPARTY      = "Вы не в группе"
     L.PL_BTN_TIP      = "Клик: список пати"
     L.PL_BUTTON_STATE = "кнопка на миникарте: %s"
-    L.HELP_PARTY      = "пати: party (список) | button (кнопка на миникарте)"
+    L.HELP_PARTY      = "пати: party | button | navcolor <цвет>  (ПКМ по игроку / Shift+клик по карте — маршрут)"
     L.PL_SORT_ROSTER  = "По ростеру"
     L.PL_SORT_NEAR    = "Ближайшие"
     L.PL_SORT_FAR     = "Дальние"

@@ -21,8 +21,9 @@ it correctly); it just makes it easy to spot.
 - 🎨 **6 themes** — Arcane, Fire, Lightning, Ice, Holy, Shadow — each with its own textures, color and animation.
 - 🌈 **Any color** — 12 presets, a rainbow mode, your class color, or a custom RGB value.
 - ✨ **Smooth animation** — breathing core, phase-shifted expanding rings, soft flicker.
+- 👥 **Party locator** — a minimap button opens a scrollable panel of your party or raid: class-colored names, live coordinates, a copy button, a class filter and sorting (roster / nearest / farthest / by class). Click a member to open the map on their location with a class-colored glow.
+- 🧭 **Navigation** — right-click a member, or `Shift`+left-click any spot on the map, to draw a movable on-screen arrow plus a class-colored dotted trail on both the world map and the minimap. Clear it by right-clicking the arrow or the on-map **Clear route** button.
 - ⚙️ **In-game options panel** (native Settings UI) and full slash commands.
-- 👥 **Party locator** — a minimap button opens a scrollable panel of your party or raid with class-colored names, live coordinates and a copy button; click a member to open the map on their location with a class-colored glow.
 - 🌍 **Localized** — shows in your client's language (English / Russian, more easy to add).
 - 🪶 Lightweight, no external libraries.
 
@@ -69,11 +70,19 @@ Open the panel with **`/sm`** (or `Esc → Options → AddOns → SpotMe`), or u
 | `/sm status` | show current state |
 | `/sm reset` | reset all settings |
 
-**Party locator**
+**Party locator & navigation**
 | Command | Action |
 | --- | --- |
 | `/sm party` | open the party/raid locator panel |
 | `/sm button` | show/hide the minimap button |
+| `/sm navcolor class` | navigation color: `class`, `red`, `cyan`, `green`, `yellow`, `black`, `white` |
+
+In the panel: **left-click** a member to show them on the map, **right-click** to navigate to them.
+**Shift + left-click** anywhere on the world map routes to that spot instead. A route draws a movable
+on-screen arrow plus a class-colored dotted trail on the world map and the minimap. Clear it by
+**right-clicking the arrow** or the **Clear route** button that appears on the open map. Filter the
+list by class with the icon row, cycle the sort order (roster / nearest / farthest / by class) with
+the header button, and open this options panel with the settings button.
 
 Aliases: `/spotme`, `/sm`, `/fa`.
 
@@ -85,6 +94,9 @@ Aliases: `/spotme`, `/sm`, `/fa`.
 - On the world map the native arrow is slightly enlarged via a hook on
   `GroupMembersPinMixin:SynchronizePinSizes`.
 - Ping textures are yellow, so they are desaturated before tinting — that keeps every color accurate.
+- Navigation draws a straight dotted path (the game has no pathfinding) with dots kept at a constant
+  on-screen size, plus an arrow that rotates toward the target from `GetPlayerFacing`. A map point is
+  routed in the class color of whoever placed it (you).
 
 ## License
 
