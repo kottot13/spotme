@@ -75,9 +75,10 @@ local DEFAULTS = {
     navArrow      = {},
     navColor      = "class",    -- arrow color: class | red | cyan | green | yellow | black | white | pink
     dotColor      = "class",    -- path-dot color (same palette)
-    -- navigation path dots (colored core + black outline), per map, plus spacing
-    ndWorldShow = true, ndWorldSize = 16, ndWorldRim = 4, ndWorldRimOn = true, ndWorldGap = 26,
-    ndMiniShow  = true, ndMiniSize  = 8,  ndMiniRim  = 2, ndMiniRimOn  = true, ndMiniGap  = 12,
+    -- navigation path markers (dots|dashes|arrows|line), colored core + black outline,
+    -- per map, plus spacing and a "flowing" animation
+    ndWorldShow = true, ndWorldStyle = "dots", ndWorldSize = 16, ndWorldRim = 4, ndWorldRimOn = true, ndWorldGap = 26, ndWorldAnim = false,
+    ndMiniShow  = true, ndMiniStyle  = "dots", ndMiniSize  = 8,  ndMiniRim  = 2, ndMiniRimOn  = true, ndMiniGap  = 12, ndMiniAnim  = false,
 }
 
 --=============================================================================
@@ -453,10 +454,21 @@ local function SetupPanel()
         function() return cfg.rainbowSpeed end, function(v) cfg.rainbowSpeed = v end)
 
     local function restyle() if ns.RestyleDots then ns.RestyleDots() end end
+    local function styleOptions()
+        local c = Settings.CreateControlTextContainer()
+        c:Add("dots", L.ND_DOTS)
+        c:Add("dashes", L.ND_DASHES)
+        c:Add("arrows", L.ND_ARROWS)
+        c:Add("line", L.ND_LINE)
+        return c:GetData()
+    end
 
     header(L.NAVDOTS_WORLD)
     checkbox("ndWorldShow", L.ND_SHOW, nil,
         function() return cfg.ndWorldShow end, function(v) cfg.ndWorldShow = v end)
+    dropdown("ndWorldStyle", L.ND_STYLE, nil,
+        function() return cfg.ndWorldStyle end, styleOptions,
+        function(v) cfg.ndWorldStyle = v; restyle() end)
     slider("ndWorldSize", L.ND_SIZE, nil, 6, 40, 1,
         function() return cfg.ndWorldSize end, function(v) cfg.ndWorldSize = v; restyle() end)
     checkbox("ndWorldRimOn", L.ND_RIM, nil,
@@ -465,10 +477,15 @@ local function SetupPanel()
         function() return cfg.ndWorldRim end, function(v) cfg.ndWorldRim = v; restyle() end)
     slider("ndWorldGap", L.ND_SPACING, nil, 10, 80, 1,
         function() return cfg.ndWorldGap end, function(v) cfg.ndWorldGap = v end)
+    checkbox("ndWorldAnim", L.ND_ANIM, nil,
+        function() return cfg.ndWorldAnim end, function(v) cfg.ndWorldAnim = v end)
 
     header(L.NAVDOTS_MINI)
     checkbox("ndMiniShow", L.ND_SHOW, nil,
         function() return cfg.ndMiniShow end, function(v) cfg.ndMiniShow = v end)
+    dropdown("ndMiniStyle", L.ND_STYLE, nil,
+        function() return cfg.ndMiniStyle end, styleOptions,
+        function(v) cfg.ndMiniStyle = v; restyle() end)
     slider("ndMiniSize", L.ND_SIZE, nil, 4, 24, 1,
         function() return cfg.ndMiniSize end, function(v) cfg.ndMiniSize = v; restyle() end)
     checkbox("ndMiniRimOn", L.ND_RIM, nil,
@@ -477,6 +494,8 @@ local function SetupPanel()
         function() return cfg.ndMiniRim end, function(v) cfg.ndMiniRim = v; restyle() end)
     slider("ndMiniGap", L.ND_SPACING, nil, 6, 40, 1,
         function() return cfg.ndMiniGap end, function(v) cfg.ndMiniGap = v end)
+    checkbox("ndMiniAnim", L.ND_ANIM, nil,
+        function() return cfg.ndMiniAnim end, function(v) cfg.ndMiniAnim = v end)
 
     if Settings.RegisterAddOnCategory then Settings.RegisterAddOnCategory(category) end
     panelCategory = category

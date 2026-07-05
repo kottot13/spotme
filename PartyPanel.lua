@@ -216,40 +216,73 @@ local function EnsureArrow()
     arrow:Hide()
 end
 
--- Apply the configured world-dot style: core (colored) size + black outline on/off & width.
-local function StyleWorldDot(d)
-    local cfg = ns.GetCfg()
-    local rim = cfg.ndWorldRimOn and cfg.ndWorldRim or 0
-    local full = cfg.ndWorldSize + 2 * rim
-    d.inner:SetSize(full, full)             -- back is anchored to all points of inner
-    d.inner.back:SetShown(cfg.ndWorldRimOn)
-    d.inner.fill:SetSize(cfg.ndWorldSize, cfg.ndWorldSize)
+-- Path-marker shapes: dots (circle), dashes (rotated bar), arrows (rotated), line.
+local CIRCLE_TEX = "Interface\\Masks\\CircleMaskScalable"
+local DASH_TEX   = "Interface\\Buttons\\WHITE8X8"
+local ARROW_TEX  = "Interface\\Minimap\\MinimapArrow"
+-- Flip if dashes/arrows point the wrong way in game.
+local DASH_ROT_SIGN, ARROW_ROT_SIGN = 1, 1
+local FLOW_SPEED = 34   -- screen px/sec for the "marching" animation
+
+-- texture + fill(w,h) + back(w,h) for a marker style
+local function MarkerDims(style, size, rim)
+    if style == "dashes" then
+        local l, t = size * 2.6, math.max(2, size * 0.65)
+        return DASH_TEX, l, t, l + 2 * rim, t + 2 * rim
+    elseif style == "arrows" then
+        local s = size * 2.0
+        return ARROW_TEX, s, s, s + 2 * rim, s + 2 * rim
+    end
+    return CIRCLE_TEX, size, size, size + 2 * rim, size + 2 * rim
+end
+
+-- rotation to align a marker with the on-screen path direction (x right, y up)
+local function MarkerAngle(style, dx, dy)
+    if style == "arrows" then return ARROW_ROT_SIGN * math.atan2(-dx, dy) end
+    return DASH_ROT_SIGN * math.atan2(dy, dx)
+end
+
+local function StyleMarker(fill, back, style, size, rim, rimOn)
+    local tex, fw, fh, bw, bh = MarkerDims(style, size, rim)
+    fill:SetTexture(tex); fill:SetSize(fw, fh); fill:SetDesaturated(style == "arrows")
+    back:SetTexture(tex); back:SetSize(bw, bh); back:SetDesaturated(style == "arrows")
+    back:SetShown(rimOn)
+    if style ~= "dashes" and style ~= "arrows" then
+        fill:SetRotation(0); back:SetRotation(0)
+    end
+end
+
+local function StyleWorldMarker(d)
+    local c = ns.GetCfg()
+    StyleMarker(d.inner.fill, d.inner.back, c.ndWorldStyle, c.ndWorldSize,
+        c.ndWorldRimOn and c.ndWorldRim or 0, c.ndWorldRimOn)
+end
+
+local function EnsurePathParent()
+    if pathParent then return end
+    pathParent = CreateFrame("Frame", nil, WorldMapFrame:GetCanvas())
+    pathParent:SetAllPoints()
+    pathParent:SetFrameStrata("HIGH")
 end
 
 local function GetDot(i)
     local d = pathDots[i]
     if not d then
-        if not pathParent then
-            pathParent = CreateFrame("Frame", nil, WorldMapFrame:GetCanvas())
-            pathParent:SetAllPoints()
-            pathParent:SetFrameStrata("HIGH")
-        end
+        EnsurePathParent()
         d = CreateFrame("Frame", nil, pathParent)   -- positioner (canvas coords, scale 1)
         d:SetSize(1, 1)
         local inner = CreateFrame("Frame", nil, d)   -- constant on-screen size (counter-scaled)
         inner:SetPoint("CENTER")
         local back = inner:CreateTexture(nil, "ARTWORK")
-        back:SetTexture("Interface\\Masks\\CircleMaskScalable")
         back:SetVertexColor(0, 0, 0, 1)
-        back:SetAllPoints()
+        back:SetPoint("CENTER")
         local fill = inner:CreateTexture(nil, "OVERLAY")
-        fill:SetTexture("Interface\\Masks\\CircleMaskScalable")
         fill:SetPoint("CENTER")
         inner.back = back
         inner.fill = fill
         d.inner = inner
         pathDots[i] = d
-        StyleWorldDot(d)
+        StyleWorldMarker(d)
     end
     return d
 end
@@ -261,32 +294,27 @@ end
 local miniDots = {}
 local MINI_ROT_SIGN = 1   -- flip if the minimap path mirrors when rotateMinimap is on
 
--- Apply the configured minimap-dot style.
-local function StyleMiniDot(d)
-    local cfg = ns.GetCfg()
-    local rim = cfg.ndMiniRimOn and cfg.ndMiniRim or 0
-    local full = cfg.ndMiniSize + 2 * rim
-    d:SetSize(full, full)                   -- back is anchored to all points of d
-    d.back:SetShown(cfg.ndMiniRimOn)
-    d.fill:SetSize(cfg.ndMiniSize, cfg.ndMiniSize)
+local function StyleMiniMarker(d)
+    local c = ns.GetCfg()
+    StyleMarker(d.fill, d.back, c.ndMiniStyle, c.ndMiniSize,
+        c.ndMiniRimOn and c.ndMiniRim or 0, c.ndMiniRimOn)
 end
 
 local function GetMiniDot(i)
     local d = miniDots[i]
     if not d then
         d = CreateFrame("Frame", nil, Minimap)
+        d:SetSize(1, 1)
         d:SetFrameStrata(Minimap:GetFrameStrata())
         d:SetFrameLevel(Minimap:GetFrameLevel() + 9)
         local back = d:CreateTexture(nil, "ARTWORK")
-        back:SetTexture("Interface\\Masks\\CircleMaskScalable")
-        back:SetVertexColor(0, 0, 0, 1); back:SetAllPoints()
+        back:SetVertexColor(0, 0, 0, 1); back:SetPoint("CENTER")
         local fill = d:CreateTexture(nil, "OVERLAY")
-        fill:SetTexture("Interface\\Masks\\CircleMaskScalable")
         fill:SetPoint("CENTER")
         d.back = back
         d.fill = fill
         miniDots[i] = d
-        StyleMiniDot(d)
+        StyleMiniMarker(d)
     end
     return d
 end
@@ -295,12 +323,32 @@ local function HideMiniDots()
     for _, d in ipairs(miniDots) do d:Hide() end
 end
 
--- Re-apply dot styles to every pooled dot (called when a dot setting changes).
+-- Re-apply marker styles to every pooled marker (called when a style/size setting changes).
 local function RestyleDots()
-    for _, d in ipairs(pathDots) do StyleWorldDot(d) end
-    for _, d in ipairs(miniDots) do StyleMiniDot(d) end
+    for _, d in ipairs(pathDots) do StyleWorldMarker(d) end
+    for _, d in ipairs(miniDots) do StyleMiniMarker(d) end
 end
 ns.RestyleDots = RestyleDots
+
+-- Solid-line style: a colored line plus a black line behind it for the outline.
+local worldLine, worldLineBack, miniLine, miniLineBack
+local function EnsureWorldLine()
+    if worldLine then return end
+    EnsurePathParent()
+    worldLineBack = pathParent:CreateLine(nil, "ARTWORK")
+    worldLineBack:SetColorTexture(0, 0, 0, 1)
+    worldLine = pathParent:CreateLine(nil, "OVERLAY")
+    worldLine:SetColorTexture(1, 1, 1, 1)
+end
+local function EnsureMiniLine()
+    if miniLine then return end
+    miniLineBack = Minimap:CreateLine(nil, "ARTWORK")
+    miniLineBack:SetColorTexture(0, 0, 0, 1)
+    miniLine = Minimap:CreateLine(nil, "OVERLAY")
+    miniLine:SetColorTexture(1, 1, 1, 1)
+end
+local function HideWorldLine() if worldLine then worldLine:Hide(); worldLineBack:Hide() end end
+local function HideMiniLine()  if miniLine then miniLine:Hide(); miniLineBack:Hide() end end
 
 -- "Clear route" button on the world map, shown while a route is active so the
 -- route can be cleared without leaving the map.
@@ -370,8 +418,7 @@ end
 function UpdateNav()
     if not navUnit and not navPoint then
         if arrow then arrow:Hide() end
-        HideDots()
-        HideMiniDots()
+        HideDots(); HideMiniDots(); HideWorldLine(); HideMiniLine()
         return
     end
     if navUnit and not UnitExists(navUnit) then ClearNav(); return end
@@ -410,8 +457,9 @@ function UpdateNav()
         end
     end
 
-    -- dotted path on the world map (straight line — WoW has no routing)
-    if ns.GetCfg().ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
+    -- path on the world map (dots / dashes / arrows / line; straight — no routing)
+    local wcfg = ns.GetCfg()
+    if wcfg.ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
         local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
         local tmx, tmy = NavTargetMapPos(mapID)
@@ -422,38 +470,61 @@ function UpdateNav()
             local zoom = ns.CanvasZoom()
             local isc = (zoom > 0) and (1 / zoom) or 1
             if isc < 0.5 then isc = 0.5 elseif isc > 3 then isc = 3 end
-            local dxp, dyp = (tmx - pmx) * w, (tmy - pmy) * h
-            local pathU = math.sqrt(dxp * dxp + dyp * dyp)
-            local gap = ns.GetCfg().ndWorldGap
-            local stepU = (zoom > 0) and (gap / zoom) or (math.min(w, h) * 0.02)  -- gap px between dots
-            local n, dd = 0, stepU
-            while stepU > 0 and dd < pathU and n < 200 do
-                local t = dd / pathU
-                n = n + 1
-                local mx = pmx + (tmx - pmx) * t
-                local my = pmy + (tmy - pmy) * t
-                local d = GetDot(n)
-                d:ClearAllPoints()
-                d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
-                d.inner:SetScale(isc)
-                d.inner.fill:SetVertexColor(dotR, dotG, dotB)
-                d:Show()
-                dd = dd + stepU
+            local style = wcfg.ndWorldStyle
+            if style == "line" then
+                HideDots()
+                EnsureWorldLine()
+                local rim = wcfg.ndWorldRimOn and wcfg.ndWorldRim or 0
+                worldLine:SetThickness(wcfg.ndWorldSize * isc)
+                worldLine:SetStartPoint("TOPLEFT", canvas, pmx * w, -pmy * h)
+                worldLine:SetEndPoint("TOPLEFT", canvas, tmx * w, -tmy * h)
+                worldLine:SetColorTexture(dotR, dotG, dotB, 1)
+                worldLine:Show()
+                if wcfg.ndWorldRimOn then
+                    worldLineBack:SetThickness((wcfg.ndWorldSize + 2 * rim) * isc)
+                    worldLineBack:SetStartPoint("TOPLEFT", canvas, pmx * w, -pmy * h)
+                    worldLineBack:SetEndPoint("TOPLEFT", canvas, tmx * w, -tmy * h)
+                    worldLineBack:Show()
+                else worldLineBack:Hide() end
+            else
+                HideWorldLine()
+                local dxp, dyp = (tmx - pmx) * w, (tmy - pmy) * h
+                local pathU = math.sqrt(dxp * dxp + dyp * dyp)
+                local stepU = (zoom > 0) and (wcfg.ndWorldGap / zoom) or (math.min(w, h) * 0.02)
+                local rot = (style == "dashes" or style == "arrows")
+                local ang = rot and MarkerAngle(style, dxp, -dyp) or 0
+                local phase = (wcfg.ndWorldAnim and stepU > 0) and ((GetTime() * FLOW_SPEED * isc) % stepU) or 0
+                local n, dd = 0, (phase > 0 and phase or stepU)
+                while stepU > 0 and dd < pathU and n < 200 do
+                    local t = dd / pathU
+                    n = n + 1
+                    local mx = pmx + (tmx - pmx) * t
+                    local my = pmy + (tmy - pmy) * t
+                    local d = GetDot(n)
+                    d:ClearAllPoints()
+                    d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
+                    d.inner:SetScale(isc)
+                    d.inner.fill:SetVertexColor(dotR, dotG, dotB)
+                    if rot then d.inner.fill:SetRotation(ang); d.inner.back:SetRotation(ang) end
+                    d:Show()
+                    dd = dd + stepU
+                end
+                for i = n + 1, #pathDots do pathDots[i]:Hide() end
             end
-            for i = n + 1, #pathDots do pathDots[i]:Hide() end
         else
-            HideDots()
+            HideDots(); HideWorldLine()
         end
     else
-        HideDots()
+        HideDots(); HideWorldLine()
     end
 
     -- dotted path on the minimap: direction from the zone map (north-up, matches
     -- the world map), dots spaced by a fixed pixel step so they never overlap.
+    local mcfg = ns.GetCfg()
     local zmap = C_Map.GetBestMapForUnit("player")
     local pp = zmap and C_Map.GetPlayerMapPosition(zmap, "player")
     local tmx, tmy = NavTargetMapPos(zmap)
-    if ns.GetCfg().ndMiniShow and pp and tmx then
+    if mcfg.ndMiniShow and pp and tmx then
         local pmx, pmy = pp:GetXY()
         local dirx, diry = tmx - pmx, -(tmy - pmy)   -- east = +x, north = -mapY (up)
         local len = math.sqrt(dirx * dirx + diry * diry)
@@ -467,23 +538,46 @@ function UpdateNav()
             local radius = (C_Minimap and C_Minimap.GetViewRadius and C_Minimap.GetViewRadius()) or 200
             local half = Minimap:GetWidth() / 2
             local pixelLen = math.min((worldDist or 0) * (half / radius), half - 6)
-            local step = ns.GetCfg().ndMiniGap
-            local n, dd = 0, step
-            while dd <= pixelLen do
-                n = n + 1
-                local d = GetMiniDot(n)
-                d:ClearAllPoints()
-                d:SetPoint("CENTER", Minimap, "CENTER", ux * dd, uy * dd)
-                d.fill:SetVertexColor(dotR, dotG, dotB)
-                d:Show()
-                dd = dd + step
+            local style = mcfg.ndMiniStyle
+            if style == "line" then
+                HideMiniDots()
+                EnsureMiniLine()
+                local rim = mcfg.ndMiniRimOn and mcfg.ndMiniRim or 0
+                miniLine:SetThickness(mcfg.ndMiniSize)
+                miniLine:SetStartPoint("CENTER", Minimap, 0, 0)
+                miniLine:SetEndPoint("CENTER", Minimap, ux * pixelLen, uy * pixelLen)
+                miniLine:SetColorTexture(dotR, dotG, dotB, 1)
+                miniLine:Show()
+                if mcfg.ndMiniRimOn then
+                    miniLineBack:SetThickness(mcfg.ndMiniSize + 2 * rim)
+                    miniLineBack:SetStartPoint("CENTER", Minimap, 0, 0)
+                    miniLineBack:SetEndPoint("CENTER", Minimap, ux * pixelLen, uy * pixelLen)
+                    miniLineBack:Show()
+                else miniLineBack:Hide() end
+            else
+                HideMiniLine()
+                local rot = (style == "dashes" or style == "arrows")
+                local ang = rot and MarkerAngle(style, ux, uy) or 0
+                local step = mcfg.ndMiniGap
+                local phase = (mcfg.ndMiniAnim and step > 0) and ((GetTime() * FLOW_SPEED) % step) or 0
+                local n, dd = 0, (phase > 0 and phase or step)
+                while dd <= pixelLen do
+                    n = n + 1
+                    local d = GetMiniDot(n)
+                    d:ClearAllPoints()
+                    d:SetPoint("CENTER", Minimap, "CENTER", ux * dd, uy * dd)
+                    d.fill:SetVertexColor(dotR, dotG, dotB)
+                    if rot then d.fill:SetRotation(ang); d.back:SetRotation(ang) end
+                    d:Show()
+                    dd = dd + step
+                end
+                for i = n + 1, #miniDots do miniDots[i]:Hide() end
             end
-            for i = n + 1, #miniDots do miniDots[i]:Hide() end
         else
-            HideMiniDots()
+            HideMiniDots(); HideMiniLine()
         end
     else
-        HideMiniDots()
+        HideMiniDots(); HideMiniLine()
     end
 end
 
@@ -492,8 +586,7 @@ function ClearNav()
     navPoint = nil
     if arrow then arrow:Hide() end
     if mapClearBtn then mapClearBtn:Hide() end
-    HideDots()
-    HideMiniDots()
+    HideDots(); HideMiniDots(); HideWorldLine(); HideMiniLine()
 end
 
 local function StartNav(unit)
