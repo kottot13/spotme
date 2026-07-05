@@ -2,7 +2,7 @@
 
 # SpotMe
 
-**Highlights your position with a customizable animated glow on the world map and minimap, so you can spot yourself at a glance.**
+**Find yourself and your group — an animated glow marks your position, and a party panel locates and navigates to everyone in your party or raid.**
 
 ![SpotMe on the world map](media/spotme.png)
 
@@ -14,6 +14,10 @@ Busy map full of icons and you can't find your own arrow? SpotMe wraps your play
 position in a smooth animated glow — a breathing core plus expanding rings — so your
 location pops out instantly. It doesn't replace the native arrow (the game keeps rotating
 it correctly); it just makes it easy to spot.
+
+It does the same for your group: a minimap button opens a party/raid panel with class-colored
+names and live coordinates, and you can navigate to any member — or any spot on the map — with a
+class-colored arrow and dotted trail.
 
 ## Features
 

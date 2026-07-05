@@ -1,14 +1,14 @@
 <!-- Project-page description for CurseForge / Wago. Paste into the Description field.
-     Summary (one line): Highlights your position with a customizable animated glow
-     on the world map and minimap, so you can spot yourself at a glance. -->
+     Summary (one line): Find yourself and your group — an animated glow marks your
+     position, and a party panel locates and navigates to everyone in your party or raid. -->
 
 # SpotMe
 
-**Find yourself instantly — a customizable animated glow marks your position on the world map and minimap.**
+**Find yourself and your group — an animated glow marks your position, and a party panel locates and navigates to everyone in your party or raid.**
 
-Ever opened your map in a busy zone and wasted a few seconds hunting for your own arrow among dozens of icons? SpotMe fixes that. It wraps your position in a smooth, animated glow — a breathing core and expanding rings — so your location jumps out the moment the map opens.
+Ever opened your map in a busy zone and wasted a few seconds hunting for your own arrow among dozens of icons? SpotMe fixes that first: it wraps your position in a smooth, animated glow — a breathing core and expanding rings — so your location jumps out the moment the map opens. It doesn't replace or hide your arrow; the game keeps drawing and rotating it exactly as before.
 
-It doesn't replace your arrow or hide anything. The game keeps drawing and rotating the native arrow exactly as before — SpotMe just makes it impossible to miss.
+Then it does the same for your group. A minimap button opens a party or raid panel with class-colored names, live coordinates and a copy button. Right-click a member — or Shift+left-click any spot on the map — and SpotMe lays a class-colored trail plus an on-screen arrow that guide you straight there.
 
 ## Features
 

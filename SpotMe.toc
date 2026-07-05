@@ -1,7 +1,7 @@
 ## Interface: 120007
 ## Title: SpotMe
-## Notes: Highlights your position with a customizable animated glow on the world map and minimap, so you can spot yourself at a glance.
-## Notes-ruRU: Подсвечивает твою позицию настраиваемым анимированным свечением на большой карте и миникарте — чтобы находить себя мгновенно.
+## Notes: Animated glow marks your position on the map and minimap, plus a party/raid locator with class-colored coordinates and navigation to your group.
+## Notes-ruRU: Анимированное свечение отмечает твою позицию на карте и миникарте, плюс локатор пати/рейда с координатами по цвету класса и навигацией до группы.
 ## Author: mpak
 ## Version: 0.13.0
 ## SavedVariables: SpotMeDB
