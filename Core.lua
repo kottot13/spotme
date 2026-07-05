@@ -74,6 +74,9 @@ local DEFAULTS = {
     sortMode      = "roster",   -- roster | near | far | class
     navArrow      = {},
     navColor      = "class",    -- class | red | cyan | green | yellow | black | white
+    -- navigation path dots (colored core + black outline), per map, plus spacing
+    ndWorldShow = true, ndWorldSize = 16, ndWorldRim = 4, ndWorldRimOn = true, ndWorldGap = 26,
+    ndMiniShow  = true, ndMiniSize  = 8,  ndMiniRim  = 2, ndMiniRimOn  = true, ndMiniGap  = 12,
 }
 
 --=============================================================================
@@ -431,6 +434,32 @@ local function SetupPanel()
         function(v) cfg.minimapSize = v; if minimapMarker then RebuildInner(minimapMarker, v) end end)
     slider("rainbowSpeed", L.SPEED_SL, nil, 0, 0.5, 0.01,
         function() return cfg.rainbowSpeed end, function(v) cfg.rainbowSpeed = v end)
+
+    local function restyle() if ns.RestyleDots then ns.RestyleDots() end end
+
+    header(L.NAVDOTS_WORLD)
+    checkbox("ndWorldShow", L.ND_SHOW, nil,
+        function() return cfg.ndWorldShow end, function(v) cfg.ndWorldShow = v end)
+    slider("ndWorldSize", L.ND_SIZE, nil, 6, 40, 1,
+        function() return cfg.ndWorldSize end, function(v) cfg.ndWorldSize = v; restyle() end)
+    checkbox("ndWorldRimOn", L.ND_RIM, nil,
+        function() return cfg.ndWorldRimOn end, function(v) cfg.ndWorldRimOn = v; restyle() end)
+    slider("ndWorldRim", L.ND_RIMW, nil, 0, 12, 1,
+        function() return cfg.ndWorldRim end, function(v) cfg.ndWorldRim = v; restyle() end)
+    slider("ndWorldGap", L.ND_SPACING, nil, 10, 80, 1,
+        function() return cfg.ndWorldGap end, function(v) cfg.ndWorldGap = v end)
+
+    header(L.NAVDOTS_MINI)
+    checkbox("ndMiniShow", L.ND_SHOW, nil,
+        function() return cfg.ndMiniShow end, function(v) cfg.ndMiniShow = v end)
+    slider("ndMiniSize", L.ND_SIZE, nil, 4, 24, 1,
+        function() return cfg.ndMiniSize end, function(v) cfg.ndMiniSize = v; restyle() end)
+    checkbox("ndMiniRimOn", L.ND_RIM, nil,
+        function() return cfg.ndMiniRimOn end, function(v) cfg.ndMiniRimOn = v; restyle() end)
+    slider("ndMiniRim", L.ND_RIMW, nil, 0, 8, 1,
+        function() return cfg.ndMiniRim end, function(v) cfg.ndMiniRim = v; restyle() end)
+    slider("ndMiniGap", L.ND_SPACING, nil, 6, 40, 1,
+        function() return cfg.ndMiniGap end, function(v) cfg.ndMiniGap = v end)
 
     if Settings.RegisterAddOnCategory then Settings.RegisterAddOnCategory(category) end
     panelCategory = category

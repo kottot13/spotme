@@ -28,6 +28,14 @@ local L = {
     GLOW_SL      = "Glow size (map)",
     MINI_SL      = "Glow size (minimap)",
     SPEED_SL     = "Rainbow speed",
+    -- navigation path dots
+    NAVDOTS_WORLD = "Path dots — world map",
+    NAVDOTS_MINI  = "Path dots — minimap",
+    ND_SHOW      = "Show dots",
+    ND_SIZE      = "Dot size",
+    ND_RIM       = "Black outline",
+    ND_RIMW      = "Outline width",
+    ND_SPACING   = "Spacing between dots",
     -- theme names
     T_arcane     = "Arcane",
     T_fire       = "Fire",
@@ -118,6 +126,13 @@ if GetLocale() == "ruRU" then
     L.GLOW_SL      = "Размер свечения (карта)"
     L.MINI_SL      = "Размер свечения (мини)"
     L.SPEED_SL     = "Скорость радуги"
+    L.NAVDOTS_WORLD = "Точки пути — карта"
+    L.NAVDOTS_MINI  = "Точки пути — миникарта"
+    L.ND_SHOW      = "Показывать точки"
+    L.ND_SIZE      = "Размер точек"
+    L.ND_RIM       = "Чёрная обводка"
+    L.ND_RIMW      = "Толщина обводки"
+    L.ND_SPACING   = "Расстояние между точками"
     L.T_arcane     = "Магия"
     L.T_fire       = "Огонь"
     L.T_lightning  = "Молния"

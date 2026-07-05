@@ -206,6 +206,16 @@ local function EnsureArrow()
     arrow:Hide()
 end
 
+-- Apply the configured world-dot style: core (colored) size + black outline on/off & width.
+local function StyleWorldDot(d)
+    local cfg = ns.GetCfg()
+    local rim = cfg.ndWorldRimOn and cfg.ndWorldRim or 0
+    local full = cfg.ndWorldSize + 2 * rim
+    d.inner:SetSize(full, full)             -- back is anchored to all points of inner
+    d.inner.back:SetShown(cfg.ndWorldRimOn)
+    d.inner.fill:SetSize(cfg.ndWorldSize, cfg.ndWorldSize)
+end
+
 local function GetDot(i)
     local d = pathDots[i]
     if not d then
@@ -217,7 +227,6 @@ local function GetDot(i)
         d = CreateFrame("Frame", nil, pathParent)   -- positioner (canvas coords, scale 1)
         d:SetSize(1, 1)
         local inner = CreateFrame("Frame", nil, d)   -- constant on-screen size (counter-scaled)
-        inner:SetSize(24, 24)
         inner:SetPoint("CENTER")
         local back = inner:CreateTexture(nil, "ARTWORK")
         back:SetTexture("Interface\\Masks\\CircleMaskScalable")
@@ -226,10 +235,11 @@ local function GetDot(i)
         local fill = inner:CreateTexture(nil, "OVERLAY")
         fill:SetTexture("Interface\\Masks\\CircleMaskScalable")
         fill:SetPoint("CENTER")
-        fill:SetSize(16, 16)
+        inner.back = back
         inner.fill = fill
         d.inner = inner
         pathDots[i] = d
+        StyleWorldDot(d)
     end
     return d
 end
@@ -241,11 +251,20 @@ end
 local miniDots = {}
 local MINI_ROT_SIGN = 1   -- flip if the minimap path mirrors when rotateMinimap is on
 
+-- Apply the configured minimap-dot style.
+local function StyleMiniDot(d)
+    local cfg = ns.GetCfg()
+    local rim = cfg.ndMiniRimOn and cfg.ndMiniRim or 0
+    local full = cfg.ndMiniSize + 2 * rim
+    d:SetSize(full, full)                   -- back is anchored to all points of d
+    d.back:SetShown(cfg.ndMiniRimOn)
+    d.fill:SetSize(cfg.ndMiniSize, cfg.ndMiniSize)
+end
+
 local function GetMiniDot(i)
     local d = miniDots[i]
     if not d then
         d = CreateFrame("Frame", nil, Minimap)
-        d:SetSize(12, 12)
         d:SetFrameStrata(Minimap:GetFrameStrata())
         d:SetFrameLevel(Minimap:GetFrameLevel() + 9)
         local back = d:CreateTexture(nil, "ARTWORK")
@@ -253,9 +272,11 @@ local function GetMiniDot(i)
         back:SetVertexColor(0, 0, 0, 1); back:SetAllPoints()
         local fill = d:CreateTexture(nil, "OVERLAY")
         fill:SetTexture("Interface\\Masks\\CircleMaskScalable")
-        fill:SetPoint("CENTER"); fill:SetSize(8, 8)
+        fill:SetPoint("CENTER")
+        d.back = back
         d.fill = fill
         miniDots[i] = d
+        StyleMiniDot(d)
     end
     return d
 end
@@ -263,6 +284,13 @@ end
 local function HideMiniDots()
     for _, d in ipairs(miniDots) do d:Hide() end
 end
+
+-- Re-apply dot styles to every pooled dot (called when a dot setting changes).
+local function RestyleDots()
+    for _, d in ipairs(pathDots) do StyleWorldDot(d) end
+    for _, d in ipairs(miniDots) do StyleMiniDot(d) end
+end
+ns.RestyleDots = RestyleDots
 
 -- "Clear route" button on the world map, shown while a route is active so the
 -- route can be cleared without leaving the map.
@@ -375,7 +403,7 @@ function UpdateNav()
     end
 
     -- dotted path on the world map (straight line — WoW has no routing)
-    if WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
+    if ns.GetCfg().ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
         local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
         local tmx, tmy = NavTargetMapPos(mapID)
@@ -388,7 +416,8 @@ function UpdateNav()
             if isc < 0.5 then isc = 0.5 elseif isc > 3 then isc = 3 end
             local dxp, dyp = (tmx - pmx) * w, (tmy - pmy) * h
             local pathU = math.sqrt(dxp * dxp + dyp * dyp)
-            local stepU = (zoom > 0) and (26 / zoom) or (math.min(w, h) * 0.02)  -- ~26 px between dots
+            local gap = ns.GetCfg().ndWorldGap
+            local stepU = (zoom > 0) and (gap / zoom) or (math.min(w, h) * 0.02)  -- gap px between dots
             local n, dd = 0, stepU
             while stepU > 0 and dd < pathU and n < 200 do
                 local t = dd / pathU
@@ -416,7 +445,7 @@ function UpdateNav()
     local zmap = C_Map.GetBestMapForUnit("player")
     local pp = zmap and C_Map.GetPlayerMapPosition(zmap, "player")
     local tmx, tmy = NavTargetMapPos(zmap)
-    if pp and tmx then
+    if ns.GetCfg().ndMiniShow and pp and tmx then
         local pmx, pmy = pp:GetXY()
         local dirx, diry = tmx - pmx, -(tmy - pmy)   -- east = +x, north = -mapY (up)
         local len = math.sqrt(dirx * dirx + diry * diry)
@@ -430,7 +459,8 @@ function UpdateNav()
             local radius = (C_Minimap and C_Minimap.GetViewRadius and C_Minimap.GetViewRadius()) or 200
             local half = Minimap:GetWidth() / 2
             local pixelLen = math.min((worldDist or 0) * (half / radius), half - 6)
-            local step, n, dd = 12, 0, 12
+            local step = ns.GetCfg().ndMiniGap
+            local n, dd = 0, step
             while dd <= pixelLen do
                 n = n + 1
                 local d = GetMiniDot(n)
