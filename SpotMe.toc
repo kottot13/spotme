@@ -3,15 +3,15 @@
 ## Notes: Highlights your position with a customizable animated glow on the world map and minimap, so you can spot yourself at a glance.
 ## Notes-ruRU: Подсвечивает твою позицию настраиваемым анимированным свечением на большой карте и миникарте — чтобы находить себя мгновенно.
 ## Author: mpak
-## Version: 0.11.0
+## Version: 0.11.1
 ## SavedVariables: SpotMeDB
 ## IconTexture: Interface\Icons\INV_Misc_Map_01
 ## X-Category: Map & Minimap
 ## X-License: MIT
 ## X-Website: https://github.com/kottot13/spotme
 ## X-Curse-Project-ID: 1598886
-# Fill in when you create the other projects (remove the leading # on the line):
-# ## X-Wago-ID: aBcDeFgH
+## X-Wago-ID: E6gvkXN1
+# Fill in when you create the WoWInterface project (remove the leading # on the line):
 # ## X-WoWI-ID: 26666
 
 Locale.lua
