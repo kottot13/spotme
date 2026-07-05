@@ -405,11 +405,20 @@ local function NavTargetMapPos(mapID)
         if navPoint.mapID == mapID then
             return navPoint.x, navPoint.y   -- same map: stored coords
         end
-        -- different (but related) map: translate via world position, like a unit pin
-        local _, wp = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
-        if wp then
-            local mx, my = WorldToMapPos(mapID, wp.x, wp.y)
-            if mx then return mx, my end
+        -- Blizzard's own cross-map translation of our waypoint: works on parent, sibling
+        -- and the world/continent overviews (same position as the yellow waypoint pin).
+        if C_Map.GetUserWaypointPositionForMap and C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() then
+            local wp = C_Map.GetUserWaypointPositionForMap(mapID)
+            if wp then local x, y = wp:GetXY(); if x then return x, y end end
+        end
+        -- fallback (only maps with real world coords): affine world->map projection
+        local info = C_Map.GetMapInfo(mapID)
+        if info and info.mapType and info.mapType >= 2 then
+            local _, w2 = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+            if w2 then
+                local mx, my = WorldToMapPos(mapID, w2.x, w2.y)
+                if mx then return mx, my end
+            end
         end
     end
     return nil
@@ -461,13 +470,9 @@ function UpdateNav()
     local wcfg = ns.GetCfg()
     if wcfg.ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
-        local info = mapID and C_Map.GetMapInfo(mapID)
-        -- Only continent/zone/dungeon maps (mapType >= 2) have usable world coords;
-        -- the world & cosmic overviews (0-1) would project a point to a nonsense spot.
-        local usable = info and info.mapType and info.mapType >= 2
         local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
-        local tmx, tmy = NavTargetMapPos(mapID)
-        if usable and pp and tmx then
+        local tmx, tmy = NavTargetMapPos(mapID)   -- nil on maps where the point can't be placed
+        if pp and tmx then
             local pmx, pmy = pp:GetXY()
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
