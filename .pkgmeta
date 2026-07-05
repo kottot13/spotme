@@ -3,6 +3,11 @@
 
 package-as: SpotMe
 
+# Use our own concise changelog for the release notes instead of the raw git log.
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
 # Keep non-addon files out of the packaged zip:
 ignore:
   - ".github"
