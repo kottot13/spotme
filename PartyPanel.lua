@@ -241,8 +241,9 @@ local function MarkerAngle(style, dx, dy)
     return DASH_ROT_SIGN * math.atan2(dy, dx)
 end
 
-local function StyleMarker(fill, back, style, size, rim, rimOn)
+local function StyleMarker(container, fill, back, style, size, rim, rimOn)
     local tex, fw, fh, bw, bh = MarkerDims(style, size, rim)
+    container:SetSize(bw, bh)   -- container must have a real size or SetScale renders nothing
     fill:SetTexture(tex); fill:SetSize(fw, fh); fill:SetDesaturated(style == "arrows")
     back:SetTexture(tex); back:SetSize(bw, bh); back:SetDesaturated(style == "arrows")
     back:SetShown(rimOn)
@@ -253,7 +254,7 @@ end
 
 local function StyleWorldMarker(d)
     local c = ns.GetCfg()
-    StyleMarker(d.inner.fill, d.inner.back, c.ndWorldStyle, c.ndWorldSize,
+    StyleMarker(d.inner, d.inner.fill, d.inner.back, c.ndWorldStyle, c.ndWorldSize,
         c.ndWorldRimOn and c.ndWorldRim or 0, c.ndWorldRimOn)
 end
 
@@ -295,7 +296,7 @@ local MINI_ROT_SIGN = 1   -- flip if the minimap path mirrors when rotateMinimap
 
 local function StyleMiniMarker(d)
     local c = ns.GetCfg()
-    StyleMarker(d.fill, d.back, c.ndMiniStyle, c.ndMiniSize,
+    StyleMarker(d, d.fill, d.back, c.ndMiniStyle, c.ndMiniSize,
         c.ndMiniRimOn and c.ndMiniRim or 0, c.ndMiniRimOn)
 end
 
