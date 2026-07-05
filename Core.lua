@@ -71,6 +71,7 @@ local DEFAULTS = {
     minimapButton = { angle = 214, hide = false },
     partyPanel    = {},
     classFilter   = {},
+    sortMode      = "roster",   -- roster | near | far
 }
 
 --=============================================================================

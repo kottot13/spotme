@@ -72,6 +72,11 @@ local L = {
     PL_BTN_TIP      = "Click: party locator",
     PL_BUTTON_STATE = "minimap button: %s",
     HELP_PARTY      = "party: party (open list) | button (minimap button)",
+    PL_SORT_ROSTER  = "Roster",
+    PL_SORT_NEAR    = "Nearest",
+    PL_SORT_FAR     = "Farthest",
+    PL_YD           = "yd",
+    PL_YOU          = "you",
 }
 
 -- ===== ruRU =====
@@ -138,6 +143,11 @@ if GetLocale() == "ruRU" then
     L.PL_BTN_TIP      = "Клик: список пати"
     L.PL_BUTTON_STATE = "кнопка на миникарте: %s"
     L.HELP_PARTY      = "пати: party (список) | button (кнопка на миникарте)"
+    L.PL_SORT_ROSTER  = "По ростеру"
+    L.PL_SORT_NEAR    = "Ближайшие"
+    L.PL_SORT_FAR     = "Дальние"
+    L.PL_YD           = "яр"
+    L.PL_YOU          = "вы"
 end
 
 ns.L = L

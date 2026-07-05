@@ -68,6 +68,18 @@ local function BuildUnitList()
     return t
 end
 
+local SORT_MODES = { "roster", "near", "far" }
+
+-- Distance in yards from the player, or nil if not in the same instance.
+local function Distance(unit)
+    if unit == "player" then return 0 end
+    local py, px, _, pInst = UnitPosition("player")
+    local uy, ux, _, uInst = UnitPosition(unit)
+    if not py or not uy or pInst ~= uInst then return nil end
+    local dx, dy = px - ux, py - uy
+    return math.sqrt(dx * dx + dy * dy)
+end
+
 --=============================================================================
 -- World-map highlight of the selected member
 --=============================================================================
@@ -203,6 +215,27 @@ local function AcquireRow(i)
     return row
 end
 
+local function UpdateSortButton()
+    if not (panel and panel.sortBtn) then return end
+    local m = ns.GetCfg().sortMode
+    if m == "near" then
+        panel.sortBtn:SetText(L.PL_SORT_NEAR)
+    elseif m == "far" then
+        panel.sortBtn:SetText(L.PL_SORT_FAR)
+    else
+        panel.sortBtn:SetText(L.PL_SORT_ROSTER)
+    end
+end
+
+local function CycleSort()
+    local c = ns.GetCfg()
+    local idx = 1
+    for k, v in ipairs(SORT_MODES) do if v == c.sortMode then idx = k end end
+    c.sortMode = SORT_MODES[(idx % #SORT_MODES) + 1]
+    UpdateSortButton()
+    Refresh()
+end
+
 local function CreateFilterIcon()
     local b = CreateFrame("Button", nil, filterBar)
     b:SetSize(ICON_SIZE, ICON_SIZE)
@@ -274,6 +307,13 @@ local function EnsurePanel()
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 1, 1)
 
+    local sortBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    sortBtn:SetSize(84, 20)
+    sortBtn:SetPoint("TOPLEFT", 10, -8)
+    sortBtn:SetScript("OnClick", CycleSort)
+    panel.sortBtn = sortBtn
+    UpdateSortButton()
+
     filterBar = CreateFrame("Frame", nil, panel)
     filterBar:SetPoint("TOPLEFT", PAD, -HEADER_H - 2)
     filterBar:SetPoint("TOPRIGHT", -PAD, -HEADER_H - 2)
@@ -336,35 +376,61 @@ function Refresh()
     end
     RebuildFilterBar(present)
 
-    -- rows, filtered by class
-    local n = 0
+    -- filter by class
+    local shown = {}
     for _, unit in ipairs(units) do
         local cf = ClassFile(unit)
-        if not (cf and db[cf]) then
-            n = n + 1
-            local row = AcquireRow(n)
-            row.unit = unit
-            row:Show()
-            local r, g, b = ClassColor(unit)
-            row.nameFS:SetText(UnitName(unit) or "?")
-            row.nameFS:SetTextColor(r, g, b)
-            row.accent:SetColorTexture(r, g, b, 0.9)
-            row.bg:SetColorTexture(1, 1, 1, (n % 2 == 0) and 0.05 or 0.0)
+        if not (cf and db[cf]) then shown[#shown + 1] = unit end
+    end
 
-            local mapID, x, y = UnitMapPos(unit)
-            if mapID then
-                row.coordText = string.format("%.1f, %.1f", x * 100, y * 100)
-                row.coordsFS:SetText(row.coordText)
-                row.coordsFS:SetTextColor(0.85, 0.85, 0.85)
-                row.copyBtn:Enable()
-            else
-                row.coordText = nil
-                row.coordsFS:SetText(L.PL_OUTOFAREA)
-                row.coordsFS:SetTextColor(0.5, 0.5, 0.5)
-                row.copyBtn:Disable()
+    -- distances + optional sort
+    local dist = {}
+    for _, unit in ipairs(shown) do dist[unit] = Distance(unit) end
+    local mode = ns.GetCfg().sortMode
+    if mode == "near" or mode == "far" then
+        table.sort(shown, function(a, b)
+            local da, dbv = dist[a], dist[b]
+            if da and dbv then
+                if mode == "near" then return da < dbv else return da > dbv end
+            elseif da then return true      -- known distance before unknown
+            elseif dbv then return false
             end
+            return false
+        end)
+    end
+
+    -- render
+    for i, unit in ipairs(shown) do
+        local row = AcquireRow(i)
+        row.unit = unit
+        row:Show()
+        local r, g, b = ClassColor(unit)
+        row.nameFS:SetText(UnitName(unit) or "?")
+        row.nameFS:SetTextColor(r, g, b)
+        row.accent:SetColorTexture(r, g, b, 0.9)
+        row.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.05 or 0.0)
+
+        local mapID, x, y = UnitMapPos(unit)
+        if mapID then
+            row.coordText = string.format("%.1f, %.1f", x * 100, y * 100)
+            local d = dist[unit]
+            if unit == "player" then
+                row.coordsFS:SetText(row.coordText .. "  ·  " .. L.PL_YOU)
+            elseif d then
+                row.coordsFS:SetText(string.format("%s  ·  %d %s", row.coordText, d, L.PL_YD))
+            else
+                row.coordsFS:SetText(row.coordText)
+            end
+            row.coordsFS:SetTextColor(0.85, 0.85, 0.85)
+            row.copyBtn:Enable()
+        else
+            row.coordText = nil
+            row.coordsFS:SetText(L.PL_OUTOFAREA)
+            row.coordsFS:SetTextColor(0.5, 0.5, 0.5)
+            row.copyBtn:Disable()
         end
     end
+    local n = #shown
     for i = n + 1, #rowPool do rowPool[i]:Hide() end
 
     content:SetHeight(math.max(1, n * ROW_H))

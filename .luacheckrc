@@ -41,6 +41,7 @@ read_globals = {
     "IsInRaid",
     "GetNumGroupMembers",
     "GetNumSubgroupMembers",
+    "UnitPosition",
     "GetCursorPosition",
     "ShowUIPanel",
     "GameTooltip",
