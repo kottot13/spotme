@@ -66,6 +66,8 @@ local function BuildUnitList()
     elseif IsInGroup() then
         t[1] = "player"
         for i = 1, GetNumSubgroupMembers() do t[i + 1] = "party" .. i end
+    else
+        t[1] = "player"   -- solo: still show yourself
     end
     return t
 end
@@ -689,7 +691,7 @@ local function EnsurePanel()
     filterBar:SetHeight(ICON_SIZE)
 
     local empty = panel:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-    empty:SetPoint("TOP", 0, -(HEADER_H + FILTER_H + 10))
+    empty:SetPoint("TOP", 0, -(HEADER_H + 8))   -- filter-row strip (shown when solo)
     empty:SetText(L.PL_NOPARTY)
     panel.empty = empty
 
@@ -720,36 +722,32 @@ end
 function Refresh()
     if not panel or not panel:IsShown() then return end
 
-    if not IsInGroup() then
-        panel.title:SetText(L.PL_TITLE)
-        panel.empty:Show()
-        for _, row in pairs(rowPool) do row:Hide() end
-        for _, b in pairs(filterIcons) do b:Hide() end
-        content:SetHeight(1)
-        panel:SetHeight(HEADER_H + FILTER_H + 44)
-        return
-    end
-    panel.empty:Hide()
-
-    local units = BuildUnitList()
+    local inGroup = IsInGroup()
+    local units = BuildUnitList()          -- includes "player" even when solo
     local db = ns.GetCfg().classFilter
 
-    -- classes present in the group, in fixed order
-    local presentSet, present = {}, {}
-    for _, unit in ipairs(units) do
-        local cf = ClassFile(unit)
-        if cf then presentSet[cf] = true end
+    if inGroup then
+        panel.empty:Hide()
+        -- classes present in the group, in fixed order
+        local presentSet, present = {}, {}
+        for _, unit in ipairs(units) do
+            local cf = ClassFile(unit)
+            if cf then presentSet[cf] = true end
+        end
+        for _, cf in ipairs(CLASS_ORDER) do
+            if presentSet[cf] then present[#present + 1] = cf end
+        end
+        RebuildFilterBar(present)
+    else
+        panel.empty:Show()                 -- keep "You are not in a party"
+        for _, b in pairs(filterIcons) do b:Hide() end
     end
-    for _, cf in ipairs(CLASS_ORDER) do
-        if presentSet[cf] then present[#present + 1] = cf end
-    end
-    RebuildFilterBar(present)
 
-    -- filter by class
+    -- filter by class (only applies in a group)
     local shown = {}
     for _, unit in ipairs(units) do
         local cf = ClassFile(unit)
-        if not (cf and db[cf]) then shown[#shown + 1] = unit end
+        if not inGroup or not (cf and db[cf]) then shown[#shown + 1] = unit end
     end
 
     -- distances + optional sort
@@ -812,7 +810,11 @@ function Refresh()
     content:SetHeight(math.max(1, n * ROW_H))
     local vis = math.max(1, math.min(n, MAX_VIS))
     panel:SetHeight(HEADER_H + FILTER_H + vis * ROW_H + PAD)
-    panel.title:SetText(string.format("%s  (%d)", L.PL_TITLE, n))
+    if inGroup then
+        panel.title:SetText(string.format("%s  (%d)", L.PL_TITLE, n))
+    else
+        panel.title:SetText(L.PL_TITLE)
+    end
 end
 
 function ns.ToggleParty()

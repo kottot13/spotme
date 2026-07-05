@@ -163,31 +163,36 @@ end
 --=============================================================================
 local cfg
 local worldMarker, minimapMarker
-local worldPin
 local classR, classG, classB = 1, 1, 1
 local panelCategory
 
 --=============================================================================
--- Native (gray) player arrow size
+-- Native (gray) player arrow size, via the world-map group-members data provider.
+-- (pin:SetPinSize does not stick in 12.0; the data provider's SetUnitPinSize does.
+--  Blizzard_WorldMap can load after us, so the re-apply hook is installed lazily.)
 --=============================================================================
-local function PinScale(pin)
-    local map = pin and pin.GetMap and pin:GetMap()
-    local s = map and map.GetCanvasScale and map:GetCanvasScale()
-    if not s or s <= 0 then return 1 end
-    return s
+local function ForEachGroupProvider(fn)
+    if not (WorldMapFrame and WorldMapFrame.dataProviders) then return end
+    for provider in pairs(WorldMapFrame.dataProviders) do
+        if provider.SetUnitPinSize then fn(provider) end
+    end
 end
 
 local function ApplyArrowSize()
-    if not worldPin or not cfg then return end
+    if not cfg then return end
     local size = cfg.showWorld and cfg.arrowSize or DEFAULT_PLAYER_SIZE
-    worldPin:SetPinSize("player", size / PinScale(worldPin))
+    ForEachGroupProvider(function(provider)
+        provider:SetUnitPinSize("player", size)
+        if provider.RefreshAllData then provider:RefreshAllData() end
+    end)
 end
 
-if GroupMembersPinMixin and GroupMembersPinMixin.SynchronizePinSizes then
-    hooksecurefunc(GroupMembersPinMixin, "SynchronizePinSizes", function(pin)
-        worldPin = pin
-        ApplyArrowSize()
-    end)
+local arrowHooked = false
+local function HookArrowSize()
+    if arrowHooked or not (WorldMapFrame and WorldMapFrame.HookScript) then return end
+    arrowHooked = true
+    WorldMapFrame:HookScript("OnShow", ApplyArrowSize)
+    ApplyArrowSize()
 end
 
 --=============================================================================
@@ -475,7 +480,7 @@ loader:SetScript("OnEvent", function()
 
     EnsureWorldMarker()
     EnsureMinimapMarker()
-    ApplyArrowSize()
+    HookArrowSize()
 
     local ok = pcall(SetupPanel)
     if not ok then panelCategory = nil end
@@ -484,7 +489,7 @@ end)
 local mapWatcher = CreateFrame("Frame")
 mapWatcher:RegisterEvent("ADDON_LOADED")
 mapWatcher:SetScript("OnEvent", function(_, _, name)
-    if name == "Blizzard_WorldMap" and cfg then EnsureWorldMarker() end
+    if name == "Blizzard_WorldMap" and cfg then EnsureWorldMarker(); HookArrowSize() end
 end)
 
 --=============================================================================
