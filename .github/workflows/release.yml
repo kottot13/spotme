@@ -24,5 +24,17 @@ jobs:
         with:
           fetch-depth: 0   # full history — for the auto-generated changelog
 
+      # Lint the Lua before building — if luacheck fails, the release stops here.
+      - name: Set up Lua 5.1
+        uses: leafo/gh-actions-lua@v10
+        with:
+          luaVersion: "5.1"
+      - name: Set up LuaRocks
+        uses: leafo/gh-actions-luarocks@v4
+      - name: Lint (luacheck)
+        run: |
+          luarocks install luacheck
+          luacheck Core.lua Locale.lua
+
       - name: Package and release
         uses: BigWigsMods/packager@v2

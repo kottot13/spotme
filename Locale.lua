@@ -2,7 +2,7 @@
 -- plus full translations. The language is chosen by GetLocale() automatically.
 -- To add a language: copy the block below and override the needed keys.
 
-local ADDON, ns = ...
+local _, ns = ...
 
 -- ===== enUS (base / fallback) =====
 local L = {

@@ -6,7 +6,7 @@
 -- around it, with themes.
 -- Config: GUI panel (Esc -> Options -> AddOns -> SpotMe, or just /sm) or slash.
 
-local ADDON, ns = ...
+local _, ns = ...
 local L = ns.L
 
 local CONFIG_VERSION = 10
