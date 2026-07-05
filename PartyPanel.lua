@@ -199,19 +199,17 @@ local function GetDot(i)
             pathParent:SetFrameStrata("HIGH")
         end
         d = CreateFrame("Frame", nil, pathParent)
-        d:SetSize(22, 22)
-        -- dark halo for contrast on bright maps
+        d:SetSize(18, 18)
+        -- solid black outline for contrast on bright maps
         local back = d:CreateTexture(nil, "ARTWORK")
-        back:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
-        back:SetDesaturated(true)
-        back:SetVertexColor(0, 0, 0, 0.85)
+        back:SetTexture("Interface\\Masks\\CircleMaskScalable")
+        back:SetVertexColor(0, 0, 0, 1)
         back:SetAllPoints()
-        -- class-colored core
+        -- solid class-colored core
         local fill = d:CreateTexture(nil, "OVERLAY")
-        fill:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
-        fill:SetDesaturated(true)
+        fill:SetTexture("Interface\\Masks\\CircleMaskScalable")
         fill:SetPoint("CENTER")
-        fill:SetSize(15, 15)
+        fill:SetSize(12, 12)
         d.fill = fill
         pathDots[i] = d
     end
@@ -233,11 +231,11 @@ local function GetMiniDot(i)
         d:SetFrameStrata(Minimap:GetFrameStrata())
         d:SetFrameLevel(Minimap:GetFrameLevel() + 9)
         local back = d:CreateTexture(nil, "ARTWORK")
-        back:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
-        back:SetDesaturated(true); back:SetVertexColor(0, 0, 0, 0.85); back:SetAllPoints()
+        back:SetTexture("Interface\\Masks\\CircleMaskScalable")
+        back:SetVertexColor(0, 0, 0, 1); back:SetAllPoints()
         local fill = d:CreateTexture(nil, "OVERLAY")
-        fill:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
-        fill:SetDesaturated(true); fill:SetPoint("CENTER"); fill:SetSize(8, 8)
+        fill:SetTexture("Interface\\Masks\\CircleMaskScalable")
+        fill:SetPoint("CENTER"); fill:SetSize(8, 8)
         d.fill = fill
         miniDots[i] = d
     end
