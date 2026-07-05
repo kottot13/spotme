@@ -161,7 +161,7 @@ local UpdateNav, ClearNav   -- forward declarations
 local function EnsureArrow()
     if arrow then return end
     arrow = CreateFrame("Frame", "SpotMeNavArrow", UIParent)
-    arrow:SetSize(52, 52)
+    arrow:SetSize(60, 60)
     arrow:SetMovable(true)
     arrow:EnableMouse(true)
     arrow:RegisterForDrag("LeftButton")
@@ -175,10 +175,20 @@ local function EnsureArrow()
         if btn == "RightButton" then ClearNav() end
     end)
 
-    local tex = arrow:CreateTexture(nil, "ARTWORK")
+    -- black outline behind for pop/contrast
+    local outline = arrow:CreateTexture(nil, "ARTWORK")
+    outline:SetTexture("Interface\\Minimap\\MinimapArrow")
+    outline:SetDesaturated(true)
+    outline:SetVertexColor(0, 0, 0, 0.9)
+    outline:SetPoint("CENTER")
+    outline:SetSize(54, 54)
+    arrow.outline = outline
+
+    local tex = arrow:CreateTexture(nil, "OVERLAY")
     tex:SetTexture("Interface\\Minimap\\MinimapArrow")
+    tex:SetDesaturated(true)   -- accurate class tint
     tex:SetPoint("CENTER")
-    tex:SetSize(42, 42)
+    tex:SetSize(46, 46)
     arrow.tex = tex
 
     local dist = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -274,7 +284,9 @@ function UpdateNav()
             local dx, dy = tx - px, ty - py
             local dist = math.sqrt(dx * dx + dy * dy)
             local bearing = math.atan2(dx, dy)
-            arrow.tex:SetRotation(NAV_ROT_SIGN * (facing - bearing) + NAV_ROT_OFFSET)
+            local arot = NAV_ROT_SIGN * (facing - bearing) + NAV_ROT_OFFSET
+            arrow.tex:SetRotation(arot)
+            arrow.outline:SetRotation(arot)
             arrow.tex:SetVertexColor(navR, navG, navB)
             arrow.dist:SetText(string.format("%d %s", dist, L.PL_YD))
             arrow.dist:SetTextColor(navR, navG, navB)
