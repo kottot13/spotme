@@ -588,6 +588,8 @@ SlashCmdList.SPOTME = function(msg)
         SetWorld(false); SetMinimap(false); say(L.ALL_OFF)
     elseif cmd == "party" then
         if ns.ToggleParty then ns.ToggleParty() end
+    elseif cmd == "navtest" then
+        if ns.NavDebug then ns.NavDebug() end
     elseif cmd == "button" then
         if ns.ToggleMinimapButton then
             say(string.format(L.PL_BUTTON_STATE, ns.ToggleMinimapButton() and L.ON or L.OFF))

@@ -424,6 +424,21 @@ local function NavTargetMapPos(mapID)
     return nil
 end
 
+-- Player position (0-1) on a given ui map. When the player isn't on the viewed map,
+-- project via world coords if it's the SAME continent, so a path to a point in another
+-- zone of the same continent still shows (heading off-map toward you). Cross-continent
+-- has no shared coordinates, so we return nil there (the world overview still shows it).
+local function PlayerMapPos(mapID)
+    local p = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
+    if p then local x, y = p:GetXY(); if x then return x, y end end
+    local py, px, _, pInst = UnitPosition("player")
+    if py and mapID then
+        local cont = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0.5, 0.5))
+        if cont == pInst then return WorldToMapPos(mapID, py, px) end
+    end
+    return nil
+end
+
 function UpdateNav()
     if not navUnit and not navPoint then
         if arrow then arrow:Hide() end
@@ -470,10 +485,9 @@ function UpdateNav()
     local wcfg = ns.GetCfg()
     if wcfg.ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
-        local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
+        local pmx, pmy = PlayerMapPos(mapID)
         local tmx, tmy = NavTargetMapPos(mapID)   -- nil on maps where the point can't be placed
-        if pp and tmx then
-            local pmx, pmy = pp:GetXY()
+        if pmx and tmx then
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
             local zoom = ns.CanvasZoom()
@@ -596,6 +610,32 @@ function ClearNav()
     if arrow then arrow:Hide() end
     if mapClearBtn then mapClearBtn:Hide() end
     HideDots(); HideMiniDots(); HideWorldLine(); HideMiniLine()
+end
+
+-- /sm navtest — prints why the world-map path may not resolve on the current map.
+function ns.NavDebug()
+    local function p(s) print("|cffff33aaSpotMe|r: " .. s) end
+    if not (navUnit or navPoint) then
+        p("no active route — right-click a member or Shift+click the map first"); return
+    end
+    p("navUnit=" .. tostring(navUnit) .. " navPoint=" ..
+        (navPoint and (navPoint.mapID .. " " .. string.format("%.1f,%.1f", navPoint.x * 100, navPoint.y * 100)) or "nil"))
+    if not (WorldMapFrame and WorldMapFrame:IsShown()) then p("world map is not open"); return end
+    local mapID = WorldMapFrame:GetMapID()
+    local info = mapID and C_Map.GetMapInfo(mapID)
+    p("map=" .. tostring(mapID) .. " type=" .. tostring(info and info.mapType) .. " (" .. tostring(info and info.name) .. ")")
+    local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
+    if pp then local x, y = pp:GetXY(); p(string.format("player: %.1f, %.1f", (x or 0) * 100, (y or 0) * 100))
+    else p("player: NIL (not resolvable on this map)") end
+    p("HasUserWaypoint=" .. tostring(C_Map.HasUserWaypoint and C_Map.HasUserWaypoint()))
+    if C_Map.GetUserWaypointPositionForMap and mapID then
+        local wp = C_Map.GetUserWaypointPositionForMap(mapID)
+        if wp then local x, y = wp:GetXY(); p(string.format("waypoint-on-map: %.1f, %.1f", (x or 0) * 100, (y or 0) * 100))
+        else p("waypoint-on-map: NIL") end
+    end
+    local tmx, tmy = NavTargetMapPos(mapID)
+    if tmx then p(string.format("target resolved: %.1f, %.1f  -> path SHOULD draw", tmx * 100, tmy * 100))
+    else p("target resolved: NIL -> no path") end
 end
 
 local function StartNav(unit)
