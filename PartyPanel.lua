@@ -301,29 +301,41 @@ function UpdateNav()
         HideDots()
     end
 
-    -- dotted path on the minimap (dots within the minimap's view radius)
-    if py and ty and pI == tI then
-        local radius = (C_Minimap and C_Minimap.GetViewRadius and C_Minimap.GetViewRadius()) or 200
-        local scale = (Minimap:GetWidth() / 2) / radius
-        local rot = GetCVarBool("rotateMinimap") and (MINI_ROT_SIGN * (facing or 0)) or 0
-        local sinR, cosR = math.sin(rot), math.cos(rot)
-        local tEast, tNorth = tx - px, ty - py
-        local n = 0
-        for i = 1, NAV_DOTS do
-            local t = i / (NAV_DOTS + 1)
-            local dEast, dNorth = tEast * t, tNorth * t
-            if (dEast * dEast + dNorth * dNorth) <= radius * radius then
+    -- dotted path on the minimap: direction from the zone map (north-up, matches
+    -- the world map), dots spaced by a fixed pixel step so they never overlap.
+    local zmap = C_Map.GetBestMapForUnit("player")
+    local pp = zmap and C_Map.GetPlayerMapPosition(zmap, "player")
+    local tp = zmap and C_Map.GetPlayerMapPosition(zmap, navUnit)
+    if pp and tp then
+        local pmx, pmy = pp:GetXY()
+        local tmx, tmy = tp:GetXY()
+        local dirx, diry = tmx - pmx, -(tmy - pmy)   -- east = +x, north = -mapY (up)
+        local len = math.sqrt(dirx * dirx + diry * diry)
+        if len > 0.00001 then
+            local ux, uy = dirx / len, diry / len
+            if GetCVarBool("rotateMinimap") and facing then
+                local a = MINI_ROT_SIGN * facing
+                local sa, ca = math.sin(a), math.cos(a)
+                ux, uy = ux * ca - uy * sa, ux * sa + uy * ca
+            end
+            local radius = (C_Minimap and C_Minimap.GetViewRadius and C_Minimap.GetViewRadius()) or 200
+            local half = Minimap:GetWidth() / 2
+            local worldDist = Distance(navUnit) or 0
+            local pixelLen = math.min(worldDist * (half / radius), half - 6)
+            local step, n, dd = 12, 0, 12
+            while dd <= pixelLen do
                 n = n + 1
                 local d = GetMiniDot(n)
                 d:ClearAllPoints()
-                d:SetPoint("CENTER", Minimap, "CENTER",
-                    (dEast * cosR - dNorth * sinR) * scale,
-                    (dEast * sinR + dNorth * cosR) * scale)
+                d:SetPoint("CENTER", Minimap, "CENTER", ux * dd, uy * dd)
                 d.fill:SetVertexColor(navR, navG, navB)
                 d:Show()
+                dd = dd + step
             end
+            for i = n + 1, #miniDots do miniDots[i]:Hide() end
+        else
+            HideMiniDots()
         end
-        for i = n + 1, #miniDots do miniDots[i]:Hide() end
     else
         HideMiniDots()
     end
