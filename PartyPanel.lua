@@ -149,7 +149,6 @@ local navUnit
 local navR, navG, navB = 1, 1, 1
 local arrow, pathParent
 local pathDots = {}
-local NAV_DOTS = 22
 -- If the arrow points the wrong way in game, flip SIGN (1/-1) or add pi to OFFSET.
 local NAV_ROT_SIGN, NAV_ROT_OFFSET = -1, 0
 local NAV_COLORS = {
@@ -293,17 +292,23 @@ function UpdateNav()
             local tmx, tmy = tp:GetXY()
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
-            for i = 1, NAV_DOTS do
-                local t = i / (NAV_DOTS + 1)
+            local dxp, dyp = (tmx - pmx) * w, (tmy - pmy) * h
+            local pathU = math.sqrt(dxp * dxp + dyp * dyp)
+            local stepU = math.min(w, h) * 0.03   -- spacing scales with the map -> constant on screen
+            local n, dd = 0, stepU
+            while stepU > 0 and dd < pathU and n < 60 do
+                local t = dd / pathU
+                n = n + 1
                 local mx = pmx + (tmx - pmx) * t
                 local my = pmy + (tmy - pmy) * t
-                local d = GetDot(i)
+                local d = GetDot(n)
                 d:ClearAllPoints()
                 d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
                 d.fill:SetVertexColor(navR, navG, navB)
                 d:Show()
+                dd = dd + stepU
             end
-            for i = NAV_DOTS + 1, #pathDots do pathDots[i]:Hide() end
+            for i = n + 1, #pathDots do pathDots[i]:Hide() end
         else
             HideDots()
         end
