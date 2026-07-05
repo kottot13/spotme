@@ -152,10 +152,6 @@ local function BuildGlow(c, cfg, size)
     function c:Paint(r, g, b)
         for _, tex in ipairs(self.colored) do tex:SetVertexColor(r, g, b) end
     end
-    function c:Resize(newSize)
-        self:SetSize(newSize, newSize)
-        for _, tex in ipairs(self.colored) do tex:SetSize(newSize, newSize) end
-    end
 end
 
 --=============================================================================
@@ -429,10 +425,10 @@ local function SetupPanel()
         function() return cfg.arrowSize end, function(v) cfg.arrowSize = v; ApplyArrowSize() end)
     slider("glowSize", L.GLOW_SL, nil, 40, 160, 5,
         function() return cfg.glowSize end,
-        function(v) cfg.glowSize = v; if worldMarker and worldMarker.inner then worldMarker.inner:Resize(v) end end)
+        function(v) cfg.glowSize = v; if worldMarker then RebuildInner(worldMarker, v) end end)
     slider("minimapSize", L.MINI_SL, nil, 20, 100, 2,
         function() return cfg.minimapSize end,
-        function(v) cfg.minimapSize = v; if minimapMarker and minimapMarker.inner then minimapMarker.inner:Resize(v) end end)
+        function(v) cfg.minimapSize = v; if minimapMarker then RebuildInner(minimapMarker, v) end end)
     slider("rainbowSpeed", L.SPEED_SL, nil, 0, 0.5, 0.01,
         function() return cfg.rainbowSpeed end, function(v) cfg.rainbowSpeed = v end)
 
@@ -551,11 +547,11 @@ SlashCmdList.SPOTME = function(msg)
         else say(L.ARROW_FMT) end
     elseif cmd == "glowsize" then
         local n = tonumber(rest)
-        if n then cfg.glowSize = n; if worldMarker and worldMarker.inner then worldMarker.inner:Resize(n) end; say(string.format(L.GLOW_SET, n))
+        if n then cfg.glowSize = n; if worldMarker then RebuildInner(worldMarker, n) end; say(string.format(L.GLOW_SET, n))
         else say(L.GLOW_FMT) end
     elseif cmd == "minisize" then
         local n = tonumber(rest)
-        if n then cfg.minimapSize = n; if minimapMarker and minimapMarker.inner then minimapMarker.inner:Resize(n) end; say(string.format(L.MSIZE_SET, n))
+        if n then cfg.minimapSize = n; if minimapMarker then RebuildInner(minimapMarker, n) end; say(string.format(L.MSIZE_SET, n))
         else say(L.MSIZE_FMT) end
     elseif cmd == "status" then
         say("world=" .. tostring(cfg.showWorld) .. " mini=" .. tostring(cfg.showMinimap)
