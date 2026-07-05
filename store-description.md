@@ -22,18 +22,40 @@ Then it does the same for your group. A minimap button opens a party or raid pan
 - **Localized** — displayed in your client's language (English and Russian, with more easy to add).
 - **Lightweight** — no external libraries, no measurable performance cost.
 
-## How to use
+## Slash commands
 
-Open the options panel with **/sm** (or Esc → Options → AddOns → SpotMe), or use slash commands:
+Open the options panel with **/sm** (or Esc → Options → AddOns → SpotMe). The full list:
 
-- `/sm world` — toggle the glow on the world map
-- `/sm minimap` — toggle the glow on the minimap
-- `/sm theme fire` — switch theme (arcane, fire, lightning, ice, holy, shadow)
-- `/sm rainbow` · `/sm class` · `/sm neon` … — change color
-- `/sm glowsize 85` — adjust the glow size
-- `/sm party` — open the party/raid locator
-- `/sm navcolor class` — navigation color (class / red / cyan / green / yellow / black / white)
-- `/sm help` — full command list
+| Command | Description |
+| --- | --- |
+| `/sm` | Open the configuration panel |
+| `/sm help` | List every command in chat |
+| `/sm world` | Toggle the glow on the world map |
+| `/sm minimap` | Toggle the glow on the minimap |
+| `/sm on` · `/sm off` | Turn the glow on / off everywhere |
+| `/sm theme fire` | Switch theme: arcane, fire, lightning, ice, holy, shadow |
+| `/sm class` | Use your class color |
+| `/sm rainbow` | Smooth rainbow color cycle |
+| `/sm gold` | Color preset: neon, ice, fire, toxic, gold, white, crimson, azure, emerald, violet, sunset, aqua |
+| `/sm color 1.0 0.3 0.95` | Custom RGB color (values 0–1) |
+| `/sm speed 0.1` | Rainbow cycle speed |
+| `/sm arrow 40` | Native arrow size on the world map (default 27) |
+| `/sm glowsize 85` | Glow size on the world map |
+| `/sm minisize 46` | Glow size on the minimap |
+| `/sm flicker` | Toggle the soft brightness flicker |
+| `/sm party` | Open the party / raid locator panel |
+| `/sm button` | Show or hide the minimap button |
+| `/sm navcolor class` | Navigation color: class, red, cyan, green, yellow, black, white |
+| `/sm status` | Print the current state in chat |
+| `/sm reset` | Reset all settings and reload |
+
+Aliases: **/spotme**, **/sm**, **/fa**.
+
+## Mouse
+
+- In the party panel: **left-click** a member to show them on the map, **right-click** to navigate to them.
+- **Shift + left-click** anywhere on the world map to route to that exact spot.
+- Clear a route with a **right-click on the arrow**, or the **Clear route** button on the open map.
 
 ## Feedback
 
