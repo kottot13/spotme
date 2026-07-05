@@ -275,6 +275,21 @@ local function HideMiniDots()
     for _, d in ipairs(miniDots) do d:Hide() end
 end
 
+-- "Clear route" button on the world map, shown while a route is active so the
+-- route can be cleared without leaving the map.
+local mapClearBtn
+local function EnsureMapClearBtn()
+    if mapClearBtn or not WorldMapFrame then return end
+    local b = CreateFrame("Button", "SpotMeMapClearBtn", WorldMapFrame, "UIPanelButtonTemplate")
+    b:SetSize(150, 22)
+    b:SetText(L.PL_CLEAR_ROUTE)
+    b:SetFrameLevel((WorldMapFrame:GetFrameLevel() or 1) + 500)   -- above the map pins
+    b:SetPoint("BOTTOM", WorldMapFrame.ScrollContainer or WorldMapFrame, "BOTTOM", 0, 14)
+    b:SetScript("OnClick", function() ClearNav() end)
+    b:Hide()
+    mapClearBtn = b
+end
+
 -- Current nav target's world position (UnitPosition order: 1st ~ y/north,
 -- 2nd ~ x/east) + instance, used for the arrow bearing and distance.
 local function NavTargetWorld()
@@ -309,6 +324,9 @@ function UpdateNav()
         return
     end
     if navUnit and not UnitExists(navUnit) then ClearNav(); return end
+
+    EnsureMapClearBtn()
+    if mapClearBtn then mapClearBtn:SetShown(WorldMapFrame:IsShown()) end
 
     -- nav color: palette color, else class color (target's, or the player's for a point)
     local ccol = NAV_COLORS[ns.GetCfg().navColor or "class"]
@@ -422,6 +440,7 @@ function ClearNav()
     navUnit = nil
     navPoint = nil
     if arrow then arrow:Hide() end
+    if mapClearBtn then mapClearBtn:Hide() end
     HideDots()
     HideMiniDots()
 end

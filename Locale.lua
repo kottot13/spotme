@@ -92,6 +92,7 @@ local L = {
     NAVCOL_FMT      = "navcolor: class|red|cyan|green|yellow|black|white",
     PL_SETTINGS     = "Settings",
     PL_MAP_HINT     = "Shift + left-click the map: path to that spot",
+    PL_CLEAR_ROUTE  = "Clear route",
 }
 
 -- ===== ruRU =====
@@ -178,6 +179,7 @@ if GetLocale() == "ruRU" then
     L.NAVCOL_FMT      = "navcolor: class|red|cyan|green|yellow|black|white"
     L.PL_SETTINGS     = "Настройки"
     L.PL_MAP_HINT     = "Shift + ЛКМ по карте — путь до точки"
+    L.PL_CLEAR_ROUTE  = "Сбросить маршрут"
 end
 
 ns.L = L
