@@ -201,14 +201,8 @@ local function CreateRow()
     local hl = row:GetHighlightTexture()
     if hl then hl:SetColorTexture(1, 1, 1, 0.08) end
 
-    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    row:SetScript("OnClick", function(self, button)
-        if not self.unit then return end
-        if button == "RightButton" then
-            if not InCombatLockdown() then TargetUnit(self.unit) end   -- targeting is blocked in combat
-        elseif self.coordText then
-            HighlightMember(self.unit)
-        end
+    row:SetScript("OnClick", function(self)
+        if self.unit and self.coordText then HighlightMember(self.unit) end
     end)
     return row
 end
