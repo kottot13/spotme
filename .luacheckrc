@@ -42,6 +42,7 @@ read_globals = {
     "GetNumGroupMembers",
     "GetNumSubgroupMembers",
     "UnitPosition",
+    "GetPlayerFacing",
     "GetCursorPosition",
     "ShowUIPanel",
     "GameTooltip",

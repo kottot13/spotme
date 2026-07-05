@@ -143,6 +143,148 @@ local function WaypointTo(unit)
 end
 
 --=============================================================================
+-- TomTom-style navigation: on-screen arrow + dotted map path (class colored)
+--=============================================================================
+local navUnit
+local navR, navG, navB = 1, 1, 1
+local arrow, pathParent
+local pathDots = {}
+local NAV_DOTS = 16
+-- If the arrow points the wrong way in game, flip SIGN (1/-1) or add pi to OFFSET.
+local NAV_ROT_SIGN, NAV_ROT_OFFSET = 1, 0
+local UpdateNav, ClearNav   -- forward declarations
+
+local function EnsureArrow()
+    if arrow then return end
+    arrow = CreateFrame("Frame", "SpotMeNavArrow", UIParent)
+    arrow:SetSize(52, 52)
+    arrow:SetMovable(true)
+    arrow:EnableMouse(true)
+    arrow:RegisterForDrag("LeftButton")
+    arrow:SetScript("OnDragStart", arrow.StartMoving)
+    arrow:SetScript("OnDragStop", function()
+        arrow:StopMovingOrSizing()
+        local p, _, rp, x, y = arrow:GetPoint()
+        ns.GetCfg().navArrow = { p, rp, x, y }
+    end)
+    arrow:SetScript("OnMouseUp", function(_, btn)
+        if btn == "RightButton" then ClearNav() end
+    end)
+
+    local tex = arrow:CreateTexture(nil, "ARTWORK")
+    tex:SetTexture("Interface\\Minimap\\MinimapArrow")
+    tex:SetPoint("CENTER")
+    tex:SetSize(42, 42)
+    arrow.tex = tex
+
+    local dist = arrow:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    dist:SetPoint("TOP", arrow, "BOTTOM", 0, 0)
+    arrow.dist = dist
+
+    local pt = ns.GetCfg().navArrow
+    if pt and pt[1] then
+        arrow:SetPoint(pt[1], UIParent, pt[2], pt[3], pt[4])
+    else
+        arrow:SetPoint("CENTER", UIParent, "CENTER", 0, 160)
+    end
+    arrow:Hide()
+end
+
+local function GetDot(i)
+    local d = pathDots[i]
+    if not d then
+        if not pathParent then
+            pathParent = CreateFrame("Frame", nil, WorldMapFrame:GetCanvas())
+            pathParent:SetAllPoints()
+            pathParent:SetFrameStrata("HIGH")
+        end
+        d = pathParent:CreateTexture(nil, "OVERLAY")
+        d:SetTexture("Interface\\Minimap\\UI-Minimap-Ping-Center")
+        d:SetDesaturated(true)
+        d:SetBlendMode("ADD")
+        d:SetSize(10, 10)
+        pathDots[i] = d
+    end
+    return d
+end
+
+local function HideDots()
+    for _, d in ipairs(pathDots) do d:Hide() end
+end
+
+function UpdateNav()
+    if not navUnit or not UnitExists(navUnit) then
+        if arrow then arrow:Hide() end
+        HideDots()
+        return
+    end
+
+    -- on-screen arrow
+    local py, px, _, pI = UnitPosition("player")
+    local ty, tx, _, tI = UnitPosition(navUnit)
+    local facing = GetPlayerFacing()
+    if arrow then
+        if py and ty and pI == tI and facing then
+            local dx, dy = tx - px, ty - py
+            local dist = math.sqrt(dx * dx + dy * dy)
+            local bearing = math.atan2(dx, dy)
+            arrow.tex:SetRotation(NAV_ROT_SIGN * (facing - bearing) + NAV_ROT_OFFSET)
+            arrow.tex:SetVertexColor(navR, navG, navB)
+            arrow.dist:SetText(string.format("%d %s", dist, L.PL_YD))
+            arrow.dist:SetTextColor(navR, navG, navB)
+            arrow:Show()
+        else
+            arrow:Hide()
+        end
+    end
+
+    -- dotted path on the world map (straight line — WoW has no routing)
+    if WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
+        local mapID = WorldMapFrame:GetMapID()
+        local pp = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
+        local tp = mapID and C_Map.GetPlayerMapPosition(mapID, navUnit)
+        if pp and tp then
+            local pmx, pmy = pp:GetXY()
+            local tmx, tmy = tp:GetXY()
+            local canvas = WorldMapFrame:GetCanvas()
+            local w, h = canvas:GetSize()
+            for i = 1, NAV_DOTS do
+                local t = i / (NAV_DOTS + 1)
+                local mx = pmx + (tmx - pmx) * t
+                local my = pmy + (tmy - pmy) * t
+                local d = GetDot(i)
+                d:ClearAllPoints()
+                d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
+                d:SetVertexColor(navR, navG, navB)
+                d:Show()
+            end
+            for i = NAV_DOTS + 1, #pathDots do pathDots[i]:Hide() end
+        else
+            HideDots()
+        end
+    else
+        HideDots()
+    end
+end
+
+function ClearNav()
+    navUnit = nil
+    if arrow then arrow:Hide() end
+    HideDots()
+end
+
+local function StartNav(unit)
+    if navUnit == unit then ClearNav(); return end   -- right-click again to stop
+    local mapID = UnitMapPos(unit)
+    if not mapID then return end
+    navUnit = unit
+    navR, navG, navB = ClassColor(unit)
+    EnsureArrow()
+    WaypointTo(unit)   -- also drop the Blizzard minimap pin
+    UpdateNav()
+end
+
+--=============================================================================
 -- Copy-coordinates popup (WoW has no clipboard API — use a selected EditBox)
 --=============================================================================
 local copyBox
@@ -216,7 +358,7 @@ local function CreateRow()
     row:SetScript("OnClick", function(self, button)
         if not self.unit or not self.coordText then return end
         if button == "RightButton" then
-            WaypointTo(self.unit)
+            StartNav(self.unit)
         else
             HighlightMember(self.unit)
         end
@@ -571,6 +713,7 @@ ticker:SetScript("OnUpdate", function(_, elapsed)
     if fastAcc >= 0.03 then
         fastAcc = 0
         if highlightUnit then UpdateHighlight() end
+        if navUnit then UpdateNav() end
     end
     slowAcc = slowAcc + elapsed
     if slowAcc >= 0.2 then
