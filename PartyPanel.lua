@@ -395,6 +395,20 @@ local function WorldToMapPos(mapID, wx, wy)
     return (px * ayy - py * ayx) / det, (axx * py - axy * px) / det
 end
 
+-- True only when the Blizzard user waypoint is our navPoint (same world spot). Guards
+-- against following a stale/other waypoint left over from a previous or external point.
+local function WaypointMatchesNav()
+    if not (navPoint and C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() and C_Map.GetUserWaypoint) then
+        return false
+    end
+    local up = C_Map.GetUserWaypoint()
+    if not (up and up.position and up.uiMapID) then return false end
+    local _, uw = C_Map.GetWorldPosFromMapPos(up.uiMapID, up.position)
+    local _, nw = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+    if not (uw and nw) then return false end
+    return math.abs(uw.x - nw.x) < 5 and math.abs(uw.y - nw.y) < 5
+end
+
 -- Target position (0-1) on a given ui map, for the dotted paths.
 local function NavTargetMapPos(mapID)
     if not mapID then return nil end
@@ -407,7 +421,8 @@ local function NavTargetMapPos(mapID)
         end
         -- Blizzard's own cross-map translation of our waypoint: works on parent, sibling
         -- and the world/continent overviews (same position as the yellow waypoint pin).
-        if C_Map.GetUserWaypointPositionForMap and C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() then
+        -- Only trust it when the Blizzard waypoint is actually our point.
+        if C_Map.GetUserWaypointPositionForMap and WaypointMatchesNav() then
             local wp = C_Map.GetUserWaypointPositionForMap(mapID)
             if wp then local x, y = wp:GetXY(); if x then return x, y end end
         end
@@ -661,6 +676,8 @@ local function StartNavToPoint(mapID, x, y)
             C_SuperTrack.SetSuperTrackedUserWaypoint(true)
         end
     end
+    local info = C_Map.GetMapInfo(mapID)
+    print("|cffff33aaSpotMe|r: " .. string.format(L.PL_ROUTE_SET, x * 100, y * 100, (info and info.name) or "?"))
     UpdateNav()
 end
 
