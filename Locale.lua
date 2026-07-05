@@ -75,6 +75,7 @@ local L = {
     PL_SORT_ROSTER  = "Roster",
     PL_SORT_NEAR    = "Nearest",
     PL_SORT_FAR     = "Farthest",
+    PL_SORT_CLASS   = "By class",
     PL_YD           = "yd",
     PL_YOU          = "you",
 }
@@ -146,6 +147,7 @@ if GetLocale() == "ruRU" then
     L.PL_SORT_ROSTER  = "По ростеру"
     L.PL_SORT_NEAR    = "Ближайшие"
     L.PL_SORT_FAR     = "Дальние"
+    L.PL_SORT_CLASS   = "По классу"
     L.PL_YD           = "яр"
     L.PL_YOU          = "вы"
 end

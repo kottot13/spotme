@@ -27,6 +27,8 @@ local CLASS_ORDER = {
     "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT",
     "SHAMAN", "MAGE", "WARLOCK", "MONK", "DRUID", "DEMONHUNTER", "EVOKER",
 }
+local CLASS_IDX = {}
+for i, cf in ipairs(CLASS_ORDER) do CLASS_IDX[cf] = i end
 local CLASS_TEX = "Interface\\GLUES\\CHARACTERCREATE\\UI-CHARACTERCREATE-CLASSES"
 
 --=============================================================================
@@ -68,7 +70,7 @@ local function BuildUnitList()
     return t
 end
 
-local SORT_MODES = { "roster", "near", "far" }
+local SORT_MODES = { "roster", "near", "far", "class" }
 
 -- Distance in yards from the player, or nil if not in the same instance.
 local function Distance(unit)
@@ -222,6 +224,8 @@ local function UpdateSortButton()
         panel.sortBtn:SetText(L.PL_SORT_NEAR)
     elseif m == "far" then
         panel.sortBtn:SetText(L.PL_SORT_FAR)
+    elseif m == "class" then
+        panel.sortBtn:SetText(L.PL_SORT_CLASS)
     else
         panel.sortBtn:SetText(L.PL_SORT_ROSTER)
     end
@@ -396,6 +400,13 @@ function Refresh()
             elseif dbv then return false
             end
             return false
+        end)
+    elseif mode == "class" then
+        table.sort(shown, function(a, b)
+            local ca = CLASS_IDX[ClassFile(a)] or 99
+            local cb = CLASS_IDX[ClassFile(b)] or 99
+            if ca ~= cb then return ca < cb end
+            return (UnitName(a) or "") < (UnitName(b) or "")
         end)
     end
 
