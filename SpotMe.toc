@@ -9,8 +9,8 @@
 ## X-Category: Map & Minimap
 ## X-License: MIT
 ## X-Website: https://github.com/kottot13/spotme
-# After creating the projects, fill in their IDs (remove the leading # on the line):
-# ## X-Curse-Project-ID: 123456
+## X-Curse-Project-ID: 1598886
+# Fill in when you create the other projects (remove the leading # on the line):
 # ## X-Wago-ID: aBcDeFgH
 # ## X-WoWI-ID: 26666
 
