@@ -7,8 +7,10 @@ package-as: SpotMe
 ignore:
   - ".github"
   - ".gitignore"
+  - ".luacheckrc"
   - "media"
   - "store-description.md"
+  - "CLAUDE.md"
 
 # No external libraries yet. If you later embed some (Ace3, LibStub,
 # HereBeDragons), add them here, e.g.:

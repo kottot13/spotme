@@ -2,6 +2,18 @@
 
 All notable changes to SpotMe are listed here. Newest first.
 
+## v0.13.1
+
+- **Party panel shows you when solo.** Even without a group, your own row (class-colored name
+  and coordinates) appears; the "You are not in a party" note stays.
+- **Navigation to a map point** now draws its path across related maps, not only the exact map
+  it was placed on — matching how party-member paths already worked.
+- **Arrow size** (`/sm arrow`, slider) works again: the native player-arrow size is applied
+  through the world-map data provider instead of the pin, which no longer sticks in 12.0.
+- **Glow size** (`/sm glowsize`, `/sm minisize`, sliders) works again: the glow is rebuilt at
+  the new size, since resizing textures under a looping animation did not update live.
+- Removed the legacy `/fa` slash alias.
+
 ## v0.13.0
 
 - **Navigation.** Right-click a party/raid member — or `Shift`+left-click any spot on the
