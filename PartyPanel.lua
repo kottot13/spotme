@@ -131,6 +131,17 @@ local function HighlightMember(unit)
     UpdateHighlight()
 end
 
+-- Drop a Blizzard navigation waypoint on the member's position (not protected).
+local function WaypointTo(unit)
+    local mapID, x, y = UnitMapPos(unit)
+    if not mapID then return end
+    if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then return end
+    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x, y))
+    if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+        C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+    end
+end
+
 --=============================================================================
 -- Copy-coordinates popup (WoW has no clipboard API — use a selected EditBox)
 --=============================================================================
@@ -201,9 +212,24 @@ local function CreateRow()
     local hl = row:GetHighlightTexture()
     if hl then hl:SetColorTexture(1, 1, 1, 0.08) end
 
-    row:SetScript("OnClick", function(self)
-        if self.unit and self.coordText then HighlightMember(self.unit) end
+    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    row:SetScript("OnClick", function(self, button)
+        if not self.unit or not self.coordText then return end
+        if button == "RightButton" then
+            WaypointTo(self.unit)
+        else
+            HighlightMember(self.unit)
+        end
     end)
+    row:SetScript("OnEnter", function(self)
+        if self.unit then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(UnitName(self.unit) or "")
+            GameTooltip:AddLine(L.PL_ROW_TIP, 0.8, 0.8, 0.8, true)
+            GameTooltip:Show()
+        end
+    end)
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return row
 end
 

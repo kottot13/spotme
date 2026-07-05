@@ -78,6 +78,7 @@ local L = {
     PL_SORT_CLASS   = "By class",
     PL_YD           = "yd",
     PL_YOU          = "you",
+    PL_ROW_TIP      = "Left-click: show on map · Right-click: set waypoint",
 }
 
 -- ===== ruRU =====
@@ -150,6 +151,7 @@ if GetLocale() == "ruRU" then
     L.PL_SORT_CLASS   = "По классу"
     L.PL_YD           = "яр"
     L.PL_YOU          = "вы"
+    L.PL_ROW_TIP      = "ЛКМ: показать на карте · ПКМ: поставить маяк"
 end
 
 ns.L = L

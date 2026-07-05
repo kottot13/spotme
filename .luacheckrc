@@ -47,4 +47,6 @@ read_globals = {
     "GameTooltip",
     "CLASS_ICON_TCOORDS",
     "LOCALIZED_CLASS_NAMES_MALE",
+    "UiMapPoint",
+    "C_SuperTrack",
 }
