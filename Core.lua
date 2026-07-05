@@ -445,6 +445,7 @@ end
 --=============================================================================
 ns.BuildGlow = BuildGlow
 ns.CanvasZoom = CanvasZoom
+ns.OpenSettings = OpenPanel
 function ns.GetCfg() return cfg end
 
 --=============================================================================

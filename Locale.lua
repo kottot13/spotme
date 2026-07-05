@@ -90,6 +90,7 @@ local L = {
     NAVCOL_WHITE    = "White",
     NAVCOL_SET      = "navigation color: %s",
     NAVCOL_FMT      = "navcolor: class|red|cyan|green|yellow|black|white",
+    PL_SETTINGS     = "Settings",
 }
 
 -- ===== ruRU =====
@@ -174,6 +175,7 @@ if GetLocale() == "ruRU" then
     L.NAVCOL_WHITE    = "Белый"
     L.NAVCOL_SET      = "цвет навигации: %s"
     L.NAVCOL_FMT      = "navcolor: class|red|cyan|green|yellow|black|white"
+    L.PL_SETTINGS     = "Настройки"
 end
 
 ns.L = L
