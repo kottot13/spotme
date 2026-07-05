@@ -426,11 +426,14 @@ local function NavTargetMapPos(mapID)
             local wp = C_Map.GetUserWaypointPositionForMap(mapID)
             if wp then local x, y = wp:GetXY(); if x then return x, y end end
         end
-        -- fallback (only maps with real world coords): affine world->map projection
+        -- fallback: affine world->map projection, but ONLY when the point and the viewed
+        -- map are the same continent — cross-continent coords are unrelated and would
+        -- project the point to a random (wrong) spot.
         local info = C_Map.GetMapInfo(mapID)
         if info and info.mapType and info.mapType >= 2 then
-            local _, w2 = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
-            if w2 then
+            local pcont, w2 = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+            local mcont = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0.5, 0.5))
+            if w2 and pcont == mcont then
                 local mx, my = WorldToMapPos(mapID, w2.x, w2.y)
                 if mx then return mx, my end
             end
