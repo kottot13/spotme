@@ -10,7 +10,6 @@ local _, ns = ...
 local L = ns.L
 
 local CONFIG_VERSION = 10
-local DEFAULT_PLAYER_SIZE = 27
 
 local UPDATE_INTERVAL = 0.02
 local SCALE_MIN, SCALE_MAX = 0.7, 2.5
@@ -172,20 +171,11 @@ local panelCategory
 -- (pin:SetPinSize does not stick in 12.0; the data provider's SetUnitPinSize does.
 --  Blizzard_WorldMap can load after us, so the re-apply hook is installed lazily.)
 --=============================================================================
-local function ForEachGroupProvider(fn)
-    if not (WorldMapFrame and WorldMapFrame.dataProviders) then return end
-    for provider in pairs(WorldMapFrame.dataProviders) do
-        if provider.SetUnitPinSize then fn(provider) end
-    end
-end
-
+-- TEMP diagnostic: native-arrow sizing disabled. Touching the world-map data provider
+-- (SetUnitPinSize / RefreshAllData) is a suspected addon-taint source that gets protected
+-- actions (e.g. the Hearthstone) blocked on us. If disabling this clears the block, the
+-- arrow-size feature is the cause and we drop/rework it.
 local function ApplyArrowSize()
-    if not cfg then return end
-    local size = cfg.showWorld and cfg.arrowSize or DEFAULT_PLAYER_SIZE
-    ForEachGroupProvider(function(provider)
-        provider:SetUnitPinSize("player", size)
-        if provider.RefreshAllData then provider:RefreshAllData() end
-    end)
 end
 
 local arrowHooked = false
