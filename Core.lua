@@ -345,7 +345,9 @@ end)
 --=============================================================================
 -- Settings panel (Settings API), wrapped in pcall so a failure never breaks core
 --=============================================================================
+local DIAG_NO_PANEL = true   -- TEMP taint diagnostic: skip the whole Settings-panel registration
 local function SetupPanel()
+    if DIAG_NO_PANEL then return end
     if not (Settings and Settings.RegisterVerticalLayoutCategory and Settings.RegisterProxySetting) then return end
     local category, layout = Settings.RegisterVerticalLayoutCategory("SpotMe")
 
