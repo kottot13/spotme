@@ -1,9 +1,7 @@
-## 0.14.0 (2026-07-05)
+## 0.14.1 (2026-07-08)
 
-[Full Changelog](https://github.com/kottot13/spotme/compare/v0.13.1...v0.14.0) · [Previous Releases](https://github.com/kottot13/spotme/releases)
+[Full Changelog](https://github.com/kottot13/spotme/compare/v0.14.0...v0.14.1) · [Previous Releases](https://github.com/kottot13/spotme/releases)
 
-- **Path styles** — dots, dashes, arrows or a solid line, with an optional flowing animation, set separately for the world map and the minimap.
-- **Full marker customization** — size, color (class or a fixed palette including pink), black outline on/off and width, spacing, and animation speed — per map.
-- **Route to any spot** — Shift + left-click the world map to path anywhere; the trail follows across zones and shows on the world overview, with a Clear route button on the map.
-- **Party panel** now lists your own coordinates even when you are not in a group.
-- Fixes — world-map arrow size and glow size (map + minimap) apply again; removed the legacy `/fa` slash alias.
+- **Fixed a taint bug** that could block protected actions (Hearthstone, action-bar buttons) and prompt you to disable SpotMe. An options dropdown was registered with a function in place of its default value, which tainted the Settings panel's secure code.
+- Map navigation now opens the world map through a taint-safe path, so showing a party member or a route can no longer block protected actions.
+- Added a **Minimap button** toggle to the in-game options panel — show or hide the SpotMe minimap button without a slash command.

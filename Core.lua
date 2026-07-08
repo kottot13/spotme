@@ -10,6 +10,7 @@ local _, ns = ...
 local L = ns.L
 
 local CONFIG_VERSION = 10
+local DEFAULT_PLAYER_SIZE = 27
 
 local UPDATE_INTERVAL = 0.02
 local SCALE_MIN, SCALE_MAX = 0.7, 2.5
@@ -171,11 +172,20 @@ local panelCategory
 -- (pin:SetPinSize does not stick in 12.0; the data provider's SetUnitPinSize does.
 --  Blizzard_WorldMap can load after us, so the re-apply hook is installed lazily.)
 --=============================================================================
--- TEMP diagnostic: native-arrow sizing disabled. Touching the world-map data provider
--- (SetUnitPinSize / RefreshAllData) is a suspected addon-taint source that gets protected
--- actions (e.g. the Hearthstone) blocked on us. If disabling this clears the block, the
--- arrow-size feature is the cause and we drop/rework it.
+local function ForEachGroupProvider(fn)
+    if not (WorldMapFrame and WorldMapFrame.dataProviders) then return end
+    for provider in pairs(WorldMapFrame.dataProviders) do
+        if provider.SetUnitPinSize then fn(provider) end
+    end
+end
+
 local function ApplyArrowSize()
+    if not cfg then return end
+    local size = cfg.showWorld and cfg.arrowSize or DEFAULT_PLAYER_SIZE
+    ForEachGroupProvider(function(provider)
+        provider:SetUnitPinSize("player", size)
+        if provider.RefreshAllData then provider:RefreshAllData() end
+    end)
 end
 
 local arrowHooked = false
@@ -345,9 +355,7 @@ end)
 --=============================================================================
 -- Settings panel (Settings API), wrapped in pcall so a failure never breaks core
 --=============================================================================
-local DIAG_NO_PANEL = true   -- TEMP taint diagnostic: skip the whole Settings-panel registration
 local function SetupPanel()
-    if DIAG_NO_PANEL then return end
     if not (Settings and Settings.RegisterVerticalLayoutCategory and Settings.RegisterProxySetting) then return end
     local category, layout = Settings.RegisterVerticalLayoutCategory("SpotMe")
 
@@ -369,8 +377,11 @@ local function SetupPanel()
     end
     local createDropdown = Settings.CreateDropdown or Settings.CreateDropDown
     local function dropdown(key, label, tip, current, optionsFn, setter)
+        -- default must be a plain value, not a function: passing the getter itself
+        -- made Blizzard_SettingsPanel treat a function as the setting's value and
+        -- tainted the secure execution path (blocked UseAction / hearthstone).
         local s = Settings.RegisterProxySetting(category, "SpotMe_" .. key,
-            Settings.VarType.String, label, current, function() return current() end, setter)
+            Settings.VarType.String, label, current(), current, setter)
         if createDropdown then createDropdown(category, s, optionsFn, tip) end
     end
 
@@ -509,6 +520,93 @@ local function OpenPanel()
         return true
     end
     return false
+end
+
+--=============================================================================
+-- Slash commands
+--=============================================================================
+local function say(msg) print("|cffff33aaSpotMe|r: " .. msg) end
+
+SLASH_SPOTME1 = "/spotme"
+SLASH_SPOTME2 = "/sm"
+SlashCmdList.SPOTME = function(msg)
+    msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+    local cmd, rest = msg:match("^(%S*)%s*(.*)$")
+
+    local function onoff(v) return v and L.ON or L.OFF end
+
+    if cmd == "" or cmd == "config" or cmd == "options" then
+        if not OpenPanel() then say(L.PANEL_NA) end
+    elseif cmd == "help" then
+        say(L.HELP_SCREENS)
+        say(L.HELP_PARTY)
+        say(string.format(L.HELP_THEMES, table.concat(THEME_ORDER, "/")))
+        say(string.format(L.HELP_COLORS, table.concat(COLOR_ORDER, " ")))
+        say(L.HELP_MISC)
+    elseif cmd == "world" then
+        SetWorld(not cfg.showWorld); say(string.format(L.WORLD_STATE, onoff(cfg.showWorld)))
+    elseif cmd == "minimap" or cmd == "mini" then
+        SetMinimap(not cfg.showMinimap); say(string.format(L.MINI_STATE, onoff(cfg.showMinimap)))
+    elseif cmd == "on" then
+        SetWorld(true); SetMinimap(true); say(L.ALL_ON)
+    elseif cmd == "off" then
+        SetWorld(false); SetMinimap(false); say(L.ALL_OFF)
+    elseif cmd == "party" then
+        if ns.ToggleParty then ns.ToggleParty() end
+    elseif cmd == "navtest" then
+        if ns.NavDebug then ns.NavDebug() end
+    elseif cmd == "button" then
+        if ns.ToggleMinimapButton then
+            say(string.format(L.PL_BUTTON_STATE, ns.ToggleMinimapButton() and L.ON or L.OFF))
+        end
+    elseif cmd == "navcolor" or cmd == "dotcolor" then
+        local okcol = { class = 1, red = 1, cyan = 1, green = 1, yellow = 1, black = 1, white = 1, pink = 1 }
+        if okcol[rest] then
+            if cmd == "dotcolor" then cfg.dotColor = rest else cfg.navColor = rest end
+            say(string.format(L.NAVCOL_SET, rest))
+        else say(L.NAVCOL_FMT) end
+    elseif cmd == "theme" then
+        if THEMES[rest] then ApplyTheme(rest); say(string.format(L.THEME_SET, L["T_" .. rest] or rest))
+        else say(string.format(L.THEMES_LIST, table.concat(THEME_ORDER, " "))) end
+    elseif cmd == "reset" then
+        wipe(SpotMeDB); ReloadUI()
+    elseif cmd == "flicker" then
+        cfg.flicker = not cfg.flicker; say(string.format(L.FLICKER_STATE, onoff(cfg.flicker)))
+    elseif cmd == "rainbow" then
+        SetColorChoice("rainbow"); say(L.MODE_RAINBOW)
+    elseif cmd == "class" then
+        SetColorChoice("class"); say(L.MODE_CLASS)
+    elseif cmd == "speed" then
+        local n = tonumber(rest)
+        if n then cfg.rainbowSpeed = n; say(string.format(L.SPEED_SET, n)) else say(L.SPEED_FMT) end
+    elseif cmd == "arrow" then
+        local n = tonumber(rest)
+        if n then cfg.arrowSize = n; ApplyArrowSize(); say(string.format(L.ARROW_SET, n))
+        else say(L.ARROW_FMT) end
+    elseif cmd == "glowsize" then
+        local n = tonumber(rest)
+        if n then cfg.glowSize = n; if worldMarker then RebuildInner(worldMarker, n) end; say(string.format(L.GLOW_SET, n))
+        else say(L.GLOW_FMT) end
+    elseif cmd == "minisize" then
+        local n = tonumber(rest)
+        if n then cfg.minimapSize = n; if minimapMarker then RebuildInner(minimapMarker, n) end; say(string.format(L.MSIZE_SET, n))
+        else say(L.MSIZE_FMT) end
+    elseif cmd == "status" then
+        say("world=" .. tostring(cfg.showWorld) .. " mini=" .. tostring(cfg.showMinimap)
+            .. " theme=" .. tostring(cfg.theme) .. " colorChoice=" .. tostring(cfg.colorChoice)
+            .. " panel=" .. tostring(panelCategory ~= nil))
+    elseif PRESETS[cmd] then
+        SetColorChoice(cmd); say(string.format(L.COLOR_SET, cmd))
+    elseif cmd == "color" then
+        local r, g, b = rest:match("([%d%.]+)%s+([%d%.]+)%s+([%d%.]+)")
+        if r then
+            cfg.mode = "solid"; cfg.colorChoice = "custom"
+            cfg.color.r, cfg.color.g, cfg.color.b = tonumber(r), tonumber(g), tonumber(b)
+            say(L.COLOR_DONE)
+        else say(L.COLOR_FMT) end
+    else
+        say(L.UNKNOWN)
+    end
 end
 
 --=============================================================================
