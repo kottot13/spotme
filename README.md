@@ -91,7 +91,7 @@ customizable in the options (style, animation, size, color, outline, spacing —
 list by class with the icon row, cycle the sort order (roster / nearest / farthest / by class) with
 the header button, and open this options panel with the settings button.
 
-Aliases: `/spotme`, `/sm`.
+Slash command: `/sm`.
 
 ## How it works
 
