@@ -128,8 +128,13 @@ local function HighlightMember(unit)
     highlightUnit = unit
     hlR, hlG, hlB = ClassColor(unit)
     EnsureHighlight()
-    if not WorldMapFrame:IsShown() then ShowUIPanel(WorldMapFrame) end
-    WorldMapFrame:SetMapID(mapID)
+    -- Open the map taint-safe: calling ShowUIPanel from an addon taints Blizzard's UI
+    -- panel system, which then gets protected actions (e.g. the Hearthstone) blocked on us.
+    if WorldMapFrame:IsShown() then
+        WorldMapFrame:SetMapID(mapID)
+    elseif OpenWorldMap then
+        OpenWorldMap(mapID)
+    end
     UpdateHighlight()
 end
 

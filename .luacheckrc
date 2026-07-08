@@ -46,6 +46,7 @@ read_globals = {
     "GetCVarBool",
     "GetCursorPosition",
     "ShowUIPanel",
+    "OpenWorldMap",
     "GameTooltip",
     "CLASS_ICON_TCOORDS",
     "LOCALIZED_CLASS_NAMES_MALE",
