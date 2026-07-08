@@ -1120,6 +1120,12 @@ function ns.ToggleMinimapButton()
     return not db.hide
 end
 
+function ns.SetMinimapButtonShown(shown)
+    local db = ns.GetCfg().minimapButton
+    db.hide = not shown
+    if mbtn then mbtn:SetShown(shown) end
+end
+
 --=============================================================================
 -- Load + tickers
 --=============================================================================

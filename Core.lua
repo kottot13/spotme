@@ -377,6 +377,12 @@ local function SetupPanel()
         function() return cfg.showWorld end, function(v) SetWorld(v) end)
     checkbox("showMinimap", L.MINI_CB, L.MINI_TIP,
         function() return cfg.showMinimap end, function(v) SetMinimap(v) end)
+    -- minimap button toggle (raw API: its default is nested in DEFAULTS.minimapButton)
+    local mbSetting = Settings.RegisterProxySetting(category, "SpotMe_mmButton",
+        Settings.VarType.Boolean, L.PL_MMBTN, true,
+        function() return not cfg.minimapButton.hide end,
+        function(v) if ns.SetMinimapButtonShown then ns.SetMinimapButtonShown(v) end end)
+    Settings.CreateCheckbox(category, mbSetting, L.PL_MMBTN_TIP)
 
     header(L.LOOK)
     dropdown("theme", L.THEME_LBL, L.THEME_TIP,
@@ -546,97 +552,3 @@ mapWatcher:RegisterEvent("ADDON_LOADED")
 mapWatcher:SetScript("OnEvent", function(_, _, name)
     if name == "Blizzard_WorldMap" and cfg then EnsureWorldMarker(); HookArrowSize() end
 end)
-
---=============================================================================
--- Slash commands
---=============================================================================
-local function say(msg) print("|cffff33aaSpotMe|r: " .. msg) end
-
-SLASH_SPOTME1 = "/sm"
-SlashCmdList.SPOTME = function(msg)
-    msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
-    local cmd, rest = msg:match("^(%S*)%s*(.*)$")
-
-    local function onoff(v) return v and L.ON or L.OFF end
-
-    if cmd == "" or cmd == "config" or cmd == "options" then
-        if not OpenPanel() then say(L.PANEL_NA) end
-    elseif cmd == "help" then
-        say(L.HELP_SCREENS)
-        say(L.HELP_PARTY)
-        say(string.format(L.HELP_THEMES, table.concat(THEME_ORDER, "/")))
-        say(string.format(L.HELP_COLORS, table.concat(COLOR_ORDER, " ")))
-        say(L.HELP_MISC)
-    elseif cmd == "world" then
-        SetWorld(not cfg.showWorld); say(string.format(L.WORLD_STATE, onoff(cfg.showWorld)))
-    elseif cmd == "minimap" or cmd == "mini" then
-        SetMinimap(not cfg.showMinimap); say(string.format(L.MINI_STATE, onoff(cfg.showMinimap)))
-    elseif cmd == "on" then
-        SetWorld(true); SetMinimap(true); say(L.ALL_ON)
-    elseif cmd == "off" then
-        SetWorld(false); SetMinimap(false); say(L.ALL_OFF)
-    elseif cmd == "party" then
-        if ns.ToggleParty then ns.ToggleParty() end
-    elseif cmd == "navtest" then
-        if ns.NavDebug then ns.NavDebug() end
-    elseif cmd == "button" then
-        if ns.ToggleMinimapButton then
-            say(string.format(L.PL_BUTTON_STATE, ns.ToggleMinimapButton() and L.ON or L.OFF))
-        end
-    elseif cmd == "navcolor" or cmd == "dotcolor" then
-        local okcol = { class = 1, red = 1, cyan = 1, green = 1, yellow = 1, black = 1, white = 1, pink = 1 }
-        if okcol[rest] then
-            if cmd == "dotcolor" then cfg.dotColor = rest else cfg.navColor = rest end
-            say(string.format(L.NAVCOL_SET, rest))
-        else say(L.NAVCOL_FMT) end
-    elseif cmd == "theme" then
-        if THEMES[rest] then ApplyTheme(rest); say(string.format(L.THEME_SET, L["T_" .. rest] or rest))
-        else say(string.format(L.THEMES_LIST, table.concat(THEME_ORDER, " "))) end
-    elseif cmd == "reset" then
-        wipe(SpotMeDB); ReloadUI()
-    elseif cmd == "flicker" then
-        cfg.flicker = not cfg.flicker; say(string.format(L.FLICKER_STATE, onoff(cfg.flicker)))
-    elseif cmd == "rainbow" then
-        SetColorChoice("rainbow"); say(L.MODE_RAINBOW)
-    elseif cmd == "class" then
-        SetColorChoice("class"); say(L.MODE_CLASS)
-    elseif cmd == "speed" then
-        local n = tonumber(rest)
-        if n then cfg.rainbowSpeed = n; say(string.format(L.SPEED_SET, n)) else say(L.SPEED_FMT) end
-    elseif cmd == "arrow" then
-        local n = tonumber(rest)
-        if n then cfg.arrowSize = n; ApplyArrowSize(); say(string.format(L.ARROW_SET, n))
-        else say(L.ARROW_FMT) end
-    elseif cmd == "glowsize" then
-        local n = tonumber(rest)
-        if n then cfg.glowSize = n; if worldMarker then RebuildInner(worldMarker, n) end; say(string.format(L.GLOW_SET, n))
-        else say(L.GLOW_FMT) end
-    elseif cmd == "minisize" then
-        local n = tonumber(rest)
-        if n then cfg.minimapSize = n; if minimapMarker then RebuildInner(minimapMarker, n) end; say(string.format(L.MSIZE_SET, n))
-        else say(L.MSIZE_FMT) end
-    elseif cmd == "status" then
-        say("world=" .. tostring(cfg.showWorld) .. " mini=" .. tostring(cfg.showMinimap)
-            .. " theme=" .. tostring(cfg.theme) .. " colorChoice=" .. tostring(cfg.colorChoice)
-            .. " panel=" .. tostring(panelCategory ~= nil))
-        if minimapMarker then
-            say("mmMarker=yes shown=" .. tostring(minimapMarker:IsShown())
-                .. " strata=" .. tostring(minimapMarker:GetFrameStrata())
-                .. " level=" .. tostring(minimapMarker:GetFrameLevel())
-                .. " inner=" .. tostring(minimapMarker.inner ~= nil))
-        else
-            say("mmMarker=nil")
-        end
-    elseif PRESETS[cmd] then
-        SetColorChoice(cmd); say(string.format(L.COLOR_SET, cmd))
-    elseif cmd == "color" then
-        local r, g, b = rest:match("([%d%.]+)%s+([%d%.]+)%s+([%d%.]+)")
-        if r then
-            cfg.mode = "solid"; cfg.colorChoice = "custom"
-            cfg.color.r, cfg.color.g, cfg.color.b = tonumber(r), tonumber(g), tonumber(b)
-            say(L.COLOR_DONE)
-        else say(L.COLOR_FMT) end
-    else
-        say(L.UNKNOWN)
-    end
-end

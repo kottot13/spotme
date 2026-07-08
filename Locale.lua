@@ -109,6 +109,8 @@ local L = {
     DOTCOL_LBL      = "Dot color",
     DOTCOL_TIP      = "Color of the path dots",
     PL_SETTINGS     = "Settings",
+    PL_MMBTN        = "Minimap button",
+    PL_MMBTN_TIP    = "Show the SpotMe button on the minimap",
     PL_MAP_HINT     = "Shift + left-click the map: path to that spot",
     PL_ROUTE_SET    = "route set — %.1f, %.1f (%s)",
     PL_CLEAR_ROUTE  = "Clear route",
@@ -214,6 +216,8 @@ if GetLocale() == "ruRU" then
     L.DOTCOL_LBL      = "Цвет точек"
     L.DOTCOL_TIP      = "Цвет точек пути"
     L.PL_SETTINGS     = "Настройки"
+    L.PL_MMBTN        = "Кнопка на миникарте"
+    L.PL_MMBTN_TIP    = "Показывать кнопку SpotMe на миникарте"
     L.PL_MAP_HINT     = "Shift + ЛКМ по карте — путь до точки"
     L.PL_ROUTE_SET    = "маршрут — %.1f, %.1f (%s)"
     L.PL_CLEAR_ROUTE  = "Сбросить маршрут"
