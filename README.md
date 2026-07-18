@@ -77,6 +77,13 @@ Open the panel with **`/sm`** (or `Esc → Options → AddOns → SpotMe`), or u
 | `/sm reset` | reset all settings |
 
 **Party locator & navigation**
+
+<div align="center">
+
+![Party panel with the coordinate field](media/ui.png)
+
+</div>
+
 | Command | Action |
 | --- | --- |
 | `/sm party` | open the party/raid locator panel |

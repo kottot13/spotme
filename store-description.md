@@ -57,6 +57,8 @@ Open the options panel with **/sm** (or Esc → Options → AddOns → SpotMe). 
 
 Slash command: **/sm**.
 
+![Party panel with the coordinate field](https://raw.githubusercontent.com/kottot13/spotme/main/media/ui.png)
+
 ## Mouse
 
 - In the party panel: **left-click** a member to show them on the map, **right-click** to navigate to them.
