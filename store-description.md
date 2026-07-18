@@ -19,6 +19,7 @@ Then it does the same for your group. A minimap button opens a party or raid pan
 - **In-game options panel** (native WoW Settings UI) plus full slash commands.
 - **Party locator** — a minimap button opens a scrollable list of your party or raid: class-colored names, live coordinates, a copy button, a class filter and sorting (roster / nearest / farthest / by class). Click a member to show them on the map with a class-colored glow.
 - **Navigation** — right-click a member, or Shift+left-click any spot on the world map, to get a movable on-screen arrow and a dotted trail on both the world map and the minimap. Clear the route from the arrow or a Clear route button on the map.
+- **Route by coordinates** — type `/sm 41.8 66.6` in chat, or use the coordinate field at the bottom of the party panel (Go / Clear buttons). The field always shows the current target, however the route was started. `/way` works as an alias when TomTom isn't installed.
 - **Fully customizable trail** — pick the marker style (dots, dashes, arrows or a solid line), an optional flowing animation with adjustable speed, plus size, color (class or a fixed palette including pink), black outline and spacing — all set separately for the world map and the minimap.
 - **Localized** — displayed in your client's language (English and Russian, with more easy to add).
 - **Lightweight** — no external libraries, no measurable performance cost.
@@ -46,6 +47,9 @@ Open the options panel with **/sm** (or Esc → Options → AddOns → SpotMe). 
 | `/sm flicker` | Toggle the soft brightness flicker |
 | `/sm party` | Open the party / raid locator panel |
 | `/sm button` | Show or hide the minimap button |
+| `/sm 41.8 66.6` | Route to coordinates (open map's zone, else your zone); `41,8 66,6` and `41.8,66.6` work too |
+| `/sm clear` | Clear the current route |
+| `/way 41.8 66.6` | TomTom-style alias (only when `/way` is free) |
 | `/sm navcolor class` | Arrow color: class, red, cyan, green, yellow, black, white, pink |
 | `/sm dotcolor class` | Trail color (same palette) |
 | `/sm status` | Print the current state in chat |
@@ -56,8 +60,9 @@ Slash command: **/sm**.
 ## Mouse
 
 - In the party panel: **left-click** a member to show them on the map, **right-click** to navigate to them.
+- The coordinate field at the bottom of the panel: type coordinates and press **Go** (or Enter) to route there; **Clear** drops the route. The field mirrors the current target.
 - **Shift + left-click** anywhere on the world map to route to that exact spot.
-- Clear a route with a **right-click on the arrow**, or the **Clear route** button on the open map.
+- Clear a route with a **right-click on the arrow**, the **Clear route** button on the open map, the panel's **Clear** button, or `/sm clear`.
 
 ## Feedback
 

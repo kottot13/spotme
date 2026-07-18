@@ -27,6 +27,7 @@ class-colored arrow and dotted trail.
 - ✨ **Smooth animation** — breathing core, phase-shifted expanding rings, soft flicker.
 - 👥 **Party locator** — a minimap button opens a scrollable panel of your party or raid: class-colored names, live coordinates, a copy button, a class filter and sorting (roster / nearest / farthest / by class). Click a member to open the map on their location with a class-colored glow.
 - 🧭 **Navigation** — right-click a member, or `Shift`+left-click any spot on the map, to draw a movable on-screen arrow plus a dotted trail on both the world map and the minimap. Clear it by right-clicking the arrow or the on-map **Clear route** button.
+- 📍 **Route by coordinates** — type `/sm 41.8 66.6` (decimal commas and `41.8,66.6` work too), or use the coordinate field at the bottom of the party panel with its **Go** / **Clear** buttons. The field always shows the current target. `/way` works as an alias when TomTom isn't installed.
 - 🎯 **Fully customizable trail** — choose the marker style (dots, dashes, arrows or a solid line), an optional flowing animation with adjustable speed, plus size, color (class or a fixed palette incl. pink), black outline and spacing — all set **separately for the world map and the minimap**.
 - ⚙️ **In-game options panel** (native Settings UI) and full slash commands.
 - 🌍 **Localized** — shows in your client's language (English / Russian, more easy to add).
@@ -80,10 +81,15 @@ Open the panel with **`/sm`** (or `Esc → Options → AddOns → SpotMe`), or u
 | --- | --- |
 | `/sm party` | open the party/raid locator panel |
 | `/sm button` | show/hide the minimap button |
+| `/sm 41.8 66.6` | route to coordinates (open map's zone, else your zone); `41,8 66,6` and `41.8,66.6` work too |
+| `/sm clear` | clear the current route |
+| `/way 41.8 66.6` | TomTom-style alias (registered only when `/way` is free) |
 | `/sm navcolor class` | arrow color: `class`, `red`, `cyan`, `green`, `yellow`, `black`, `white`, `pink` |
 | `/sm dotcolor class` | trail color (same palette) |
 
 In the panel: **left-click** a member to show them on the map, **right-click** to navigate to them.
+The coordinate field at the bottom routes to typed coordinates (**Go** or `Enter`; **Clear** drops the
+route) and always mirrors the current target, whichever way the route was started.
 **Shift + left-click** anywhere on the world map routes to that spot instead. A route draws a movable
 on-screen arrow plus a dotted trail on the world map and the minimap. Clear it by **right-clicking
 the arrow** or the **Clear route** button that appears on the open map. The trail is fully

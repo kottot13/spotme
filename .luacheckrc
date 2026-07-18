@@ -11,6 +11,7 @@ globals = {
     "SlashCmdList",
     "SLASH_SPOTME1",
     "SLASH_SPOTME2",
+    "SLASH_SPOTMEWAY1",
 }
 
 -- WoW API the addon reads (known names, not typos).
@@ -54,4 +55,5 @@ read_globals = {
     "C_SuperTrack",
     "IsShiftKeyDown",
     "CreateVector2D",
+    "hash_SlashCmdList",
 }

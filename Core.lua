@@ -527,6 +527,21 @@ end
 --=============================================================================
 local function say(msg) print("|cffff33aaSpotMe|r: " .. msg) end
 
+-- "41.8 66.6" (and friends) -> route to that point on the open/current map.
+-- Returns false when the input is not a coordinate pair at all.
+local function HandleCoordInput(input)
+    if not ns.ParseCoords then return false end
+    local x, y = ns.ParseCoords(input)
+    if not (x and y) then return false end
+    local mapID = ns.ResolveInputMap and ns.ResolveInputMap()
+    if mapID and ns.StartNavToPoint then
+        ns.StartNavToPoint(mapID, x / 100, y / 100)
+    else
+        say(L.NAV_NOMAP)
+    end
+    return true
+end
+
 SLASH_SPOTME1 = "/spotme"
 SLASH_SPOTME2 = "/sm"
 SlashCmdList.SPOTME = function(msg)
@@ -540,6 +555,7 @@ SlashCmdList.SPOTME = function(msg)
     elseif cmd == "help" then
         say(L.HELP_SCREENS)
         say(L.HELP_PARTY)
+        say(L.HELP_NAV)
         say(string.format(L.HELP_THEMES, table.concat(THEME_ORDER, "/")))
         say(string.format(L.HELP_COLORS, table.concat(COLOR_ORDER, " ")))
         say(L.HELP_MISC)
@@ -553,6 +569,9 @@ SlashCmdList.SPOTME = function(msg)
         SetWorld(false); SetMinimap(false); say(L.ALL_OFF)
     elseif cmd == "party" then
         if ns.ToggleParty then ns.ToggleParty() end
+    elseif cmd == "clear" then
+        if ns.ClearNav then ns.ClearNav() end
+        say(L.NAV_CLEARED)
     elseif cmd == "navtest" then
         if ns.NavDebug then ns.NavDebug() end
     elseif cmd == "button" then
@@ -604,8 +623,24 @@ SlashCmdList.SPOTME = function(msg)
             cfg.color.r, cfg.color.g, cfg.color.b = tonumber(r), tonumber(g), tonumber(b)
             say(L.COLOR_DONE)
         else say(L.COLOR_FMT) end
-    else
+    elseif not HandleCoordInput(msg) then
         say(L.UNKNOWN)
+    end
+end
+
+-- TomTom-compatible /way alias. Registered at login and only when no other
+-- addon owns /way, so an installed TomTom keeps its command.
+local function RegisterWayAlias()
+    if hash_SlashCmdList and hash_SlashCmdList["/WAY"] then return end
+    SLASH_SPOTMEWAY1 = "/way"
+    SlashCmdList.SPOTMEWAY = function(msg)
+        msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+        if msg == "clear" then
+            if ns.ClearNav then ns.ClearNav() end
+            say(L.NAV_CLEARED)
+        elseif not HandleCoordInput(msg) then
+            say(L.NAV_BADCOORDS)
+        end
     end
 end
 
@@ -645,6 +680,8 @@ loader:SetScript("OnEvent", function()
 
     local ok = pcall(SetupPanel)
     if not ok then panelCategory = nil end
+
+    RegisterWayAlias()
 end)
 
 local mapWatcher = CreateFrame("Frame")

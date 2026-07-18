@@ -1,9 +1,9 @@
 ## Interface: 120007
 ## Title: SpotMe
-## Notes: Animated glow marks your position on the map and minimap, plus a party/raid locator with class-colored coordinates and navigation to your group.
-## Notes-ruRU: Анимированное свечение отмечает твою позицию на карте и миникарте, плюс локатор пати/рейда с координатами по цвету класса и навигацией до группы.
+## Notes: Animated glow marks your position on the map and minimap, plus a party/raid locator with navigation to your group or any coordinates.
+## Notes-ruRU: Анимированное свечение отмечает твою позицию на карте и миникарте, плюс локатор пати/рейда с навигацией до группы или любых координат.
 ## Author: mpak
-## Version: 0.14.1
+## Version: 0.15.0
 ## SavedVariables: SpotMeDB
 ## IconTexture: Interface\Icons\INV_Misc_Map_01
 ## X-Category: Map & Minimap
@@ -16,4 +16,5 @@
 
 Locale.lua
 Core.lua
+Nav.lua
 PartyPanel.lua

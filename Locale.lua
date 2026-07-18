@@ -114,6 +114,14 @@ local L = {
     PL_MAP_HINT     = "Shift + left-click the map: path to that spot",
     PL_ROUTE_SET    = "route set — %.1f, %.1f (%s)",
     PL_CLEAR_ROUTE  = "Clear route",
+    -- coordinate navigation
+    NAV_GO        = "Go",
+    NAV_CLEAR     = "Clear",
+    NAV_FIELD_TIP = "Route to coordinates, e.g. 41.8 66.6",
+    NAV_CLEARED   = "route cleared",
+    NAV_BADCOORDS = "coords: /sm 41.8 66.6 (also 41,8 66,6 or 41.8,66.6)",
+    NAV_NOMAP     = "cannot resolve the current map",
+    HELP_NAV      = "route: /sm <x> <y> | clear  (also /way when free)",
 }
 
 -- ===== ruRU =====
@@ -221,6 +229,13 @@ if GetLocale() == "ruRU" then
     L.PL_MAP_HINT     = "Shift + ЛКМ по карте — путь до точки"
     L.PL_ROUTE_SET    = "маршрут — %.1f, %.1f (%s)"
     L.PL_CLEAR_ROUTE  = "Сбросить маршрут"
+    L.NAV_GO        = "Идти"
+    L.NAV_CLEAR     = "Сброс"
+    L.NAV_FIELD_TIP = "Маршрут к координатам, напр. 41.8 66.6"
+    L.NAV_CLEARED   = "маршрут сброшен"
+    L.NAV_BADCOORDS = "координаты: /sm 41.8 66.6 (можно 41,8 66,6 или 41.8,66.6)"
+    L.NAV_NOMAP     = "не удалось определить карту"
+    L.HELP_NAV      = "маршрут: /sm <x> <y> | clear  (также /way, если свободна)"
 end
 
 ns.L = L
