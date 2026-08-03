@@ -75,6 +75,7 @@ local DEFAULTS = {
     navArrow      = {},
     navColor      = "class",    -- arrow color: class | red | cyan | green | yellow | black | white | pink
     dotColor      = "class",    -- path-dot color (same palette)
+    navArrive     = 20,         -- clear the route within this many yards (0 = never)
     -- navigation path markers (dots|dashes|arrows|line), colored core + black outline,
     -- per map, plus spacing and a "flowing" animation
     ndWorldShow = true, ndWorldStyle = "dots", ndWorldSize = 16, ndWorldRim = 4, ndWorldRimOn = true, ndWorldGap = 26, ndWorldAnim = false, ndWorldFlow = 34,
@@ -256,14 +257,30 @@ local function EnsureWorldMarker()
     RebuildInner(worldMarker, cfg.glowSize)
 end
 
+-- Parent for anything we draw on the minimap: UIParent, never the minimap itself.
+--
+-- Nothing inside the minimap is a safe parent any more. 12.0 nests it as
+-- MinimapCluster > MinimapContainer > Minimap, Minimap clips its children (so a
+-- button at the rim is cut off) and can report not visible while the minimap
+-- still renders. On top of that, frame-mover addons (MoveAny and friends)
+-- reparent minimap pieces into their own hidden containers, which silently takes
+-- every child with them.
+--
+-- UIParent is always visible and never clips. We only ANCHOR to Minimap, so our
+-- overlays still follow the minimap wherever it is moved or resized.
+local function MinimapParent()
+    return UIParent
+end
+ns.MinimapParent = MinimapParent
+
 local function EnsureMinimapMarker()
     if not Minimap then return end
     if not minimapMarker then
-        minimapMarker = CreateFrame("Frame", nil, Minimap)
+        minimapMarker = CreateFrame("Frame", nil, MinimapParent())
         minimapMarker:SetSize(cfg.minimapSize, cfg.minimapSize)
         minimapMarker:SetPoint("CENTER", Minimap, "CENTER")
-        -- On the reworked Midnight minimap the terrain/blip layers sit above a
-        -- same-strata child, so force our glow onto a higher strata + level.
+        -- the terrain/blip layers sit above a same-strata child, so force our
+        -- glow onto a higher strata + level
         minimapMarker:SetFrameStrata("MEDIUM")
         minimapMarker:SetFrameLevel(4000)
         minimapMarker:Hide()
@@ -462,6 +479,10 @@ local function SetupPanel()
     slider("rainbowSpeed", L.SPEED_SL, nil, 0, 0.5, 0.01,
         function() return cfg.rainbowSpeed end, function(v) cfg.rainbowSpeed = v end)
 
+    header(L.NAV_SECTION)
+    slider("navArrive", L.NAV_ARRIVE, L.NAV_ARRIVE_TIP, 0, 100, 5,
+        function() return cfg.navArrive end, function(v) cfg.navArrive = v end)
+
     local function restyle() if ns.RestyleDots then ns.RestyleDots() end end
     local function styleOptions()
         local c = Settings.CreateControlTextContainer()
@@ -611,9 +632,11 @@ SlashCmdList.SPOTME = function(msg)
         if n then cfg.minimapSize = n; if minimapMarker then RebuildInner(minimapMarker, n) end; say(string.format(L.MSIZE_SET, n))
         else say(L.MSIZE_FMT) end
     elseif cmd == "status" then
+        local btn = SpotMeMinimapButton
         say("world=" .. tostring(cfg.showWorld) .. " mini=" .. tostring(cfg.showMinimap)
             .. " theme=" .. tostring(cfg.theme) .. " colorChoice=" .. tostring(cfg.colorChoice)
-            .. " panel=" .. tostring(panelCategory ~= nil))
+            .. " panel=" .. tostring(panelCategory ~= nil)
+            .. " btn=" .. (btn and (btn:IsVisible() and "visible" or "hidden") or "missing"))
     elseif PRESETS[cmd] then
         SetColorChoice(cmd); say(string.format(L.COLOR_SET, cmd))
     elseif cmd == "color" then
@@ -625,22 +648,6 @@ SlashCmdList.SPOTME = function(msg)
         else say(L.COLOR_FMT) end
     elseif not HandleCoordInput(msg) then
         say(L.UNKNOWN)
-    end
-end
-
--- TomTom-compatible /way alias. Registered at login and only when no other
--- addon owns /way, so an installed TomTom keeps its command.
-local function RegisterWayAlias()
-    if hash_SlashCmdList and hash_SlashCmdList["/WAY"] then return end
-    SLASH_SPOTMEWAY1 = "/way"
-    SlashCmdList.SPOTMEWAY = function(msg)
-        msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
-        if msg == "clear" then
-            if ns.ClearNav then ns.ClearNav() end
-            say(L.NAV_CLEARED)
-        elseif not HandleCoordInput(msg) then
-            say(L.NAV_BADCOORDS)
-        end
     end
 end
 
@@ -680,8 +687,6 @@ loader:SetScript("OnEvent", function()
 
     local ok = pcall(SetupPanel)
     if not ok then panelCategory = nil end
-
-    RegisterWayAlias()
 end)
 
 local mapWatcher = CreateFrame("Frame")

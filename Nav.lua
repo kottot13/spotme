@@ -166,6 +166,9 @@ local function EnsurePathParent()
     pathParent = CreateFrame("Frame", nil, WorldMapFrame:GetCanvas())
     pathParent:SetAllPoints()
     pathParent:SetFrameStrata("HIGH")
+    -- Keep markers and lines inside the map: a target that resolves outside the
+    -- canvas must not trail across the rest of the screen.
+    if pathParent.SetClipsChildren then pathParent:SetClipsChildren(true) end
 end
 
 local function GetDot(i)
@@ -206,10 +209,12 @@ end
 local function GetMiniDot(i)
     local d = miniDots[i]
     if not d then
-        d = CreateFrame("Frame", nil, Minimap)
+        -- on the cluster rather than on Minimap itself (see ns.MinimapParent),
+        -- anchored to Minimap so the geometry is unchanged
+        d = CreateFrame("Frame", nil, ns.MinimapParent())
         d:SetSize(1, 1)
-        d:SetFrameStrata(Minimap:GetFrameStrata())
-        d:SetFrameLevel(Minimap:GetFrameLevel() + 9)
+        d:SetFrameStrata("MEDIUM")
+        d:SetFrameLevel(3900)
         local back = d:CreateTexture(nil, "ARTWORK")
         back:SetVertexColor(0, 0, 0, 1); back:SetPoint("CENTER")
         local fill = d:CreateTexture(nil, "OVERLAY")
@@ -243,11 +248,17 @@ local function EnsureWorldLine()
     worldLine = pathParent:CreateLine(nil, "OVERLAY")
     worldLine:SetColorTexture(1, 1, 1, 1)
 end
+local miniLineHost
 local function EnsureMiniLine()
     if miniLine then return end
-    miniLineBack = Minimap:CreateLine(nil, "ARTWORK")
+    -- lines need a host frame off the cluster for the same reason as the dots
+    miniLineHost = CreateFrame("Frame", nil, ns.MinimapParent())
+    miniLineHost:SetAllPoints(Minimap)
+    miniLineHost:SetFrameStrata("MEDIUM")
+    miniLineHost:SetFrameLevel(3890)
+    miniLineBack = miniLineHost:CreateLine(nil, "ARTWORK")
     miniLineBack:SetColorTexture(0, 0, 0, 1)
-    miniLine = Minimap:CreateLine(nil, "OVERLAY")
+    miniLine = miniLineHost:CreateLine(nil, "OVERLAY")
     miniLine:SetColorTexture(1, 1, 1, 1)
 end
 local function HideWorldLine() if worldLine then worldLine:Hide(); worldLineBack:Hide() end end
@@ -405,6 +416,14 @@ function UpdateNav()
         worldDist = math.sqrt(ddx * ddx + ddy * ddy)
     end
 
+    -- Arrived: clear the route instead of leaving a stale trail behind for hours.
+    local arrive = ns.GetCfg().navArrive or 0
+    if worldDist and arrive > 0 and worldDist <= arrive then
+        ClearNav()
+        print("|cffff33aaSpotMe|r: " .. L.NAV_ARRIVED)
+        return
+    end
+
     -- on-screen arrow
     if arrow then
         if py and ty and pI == tI and facing then
@@ -458,20 +477,26 @@ function UpdateNav()
                 local rot = (style == "dashes" or style == "arrows")
                 local ang = rot and MarkerAngle(style, dxp, -dyp) or 0
                 local phase = (wcfg.ndWorldAnim and stepU > 0) and ((GetTime() * wcfg.ndWorldFlow * isc) % stepU) or 0
-                local n, dd = 0, (phase > 0 and phase or stepU)
-                while stepU > 0 and dd < pathU and n < 200 do
+                local n, dd, steps = 0, (phase > 0 and phase or stepU), 0
+                while stepU > 0 and dd < pathU and n < 200 and steps < 600 do
                     local t = dd / pathU
-                    n = n + 1
+                    steps = steps + 1
+                    dd = dd + stepU
                     local mx = pmx + (tmx - pmx) * t
                     local my = pmy + (tmy - pmy) * t
-                    local d = GetDot(n)
-                    d:ClearAllPoints()
-                    d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
-                    d.inner:SetScale(isc)
-                    d.inner.fill:SetVertexColor(dotR, dotG, dotB)
-                    if rot then d.inner.fill:SetRotation(ang); d.inner.back:SetRotation(ang) end
-                    d:Show()
-                    dd = dd + stepU
+                    -- Skip whatever falls off the map: a target that belongs to
+                    -- another map projects outside 0-1, and drawing it would run
+                    -- a trail of dots across the screen toward nothing.
+                    if mx >= 0 and mx <= 1 and my >= 0 and my <= 1 then
+                        n = n + 1
+                        local d = GetDot(n)
+                        d:ClearAllPoints()
+                        d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
+                        d.inner:SetScale(isc)
+                        d.inner.fill:SetVertexColor(dotR, dotG, dotB)
+                        if rot then d.inner.fill:SetRotation(ang); d.inner.back:SetRotation(ang) end
+                        d:Show()
+                    end
                 end
                 for i = n + 1, #pathDots do pathDots[i]:Hide() end
             end
@@ -612,22 +637,31 @@ local function StartNavToPoint(mapID, x, y)
 end
 
 -- Shift + left-click anywhere on the world map starts a path to that spot.
+--
+-- Registered through Blizzard's own canvas click handler rather than a raw
+-- OnMouseUp hook on the scroll container. OnMouseUp also fires when the player
+-- finishes PANNING the map, so the old hook dropped a route whenever the map
+-- was dragged with Shift held. The engine calls a canvas click handler only
+-- after WouldCursorPositionBeClick() passes, and skips it when a pin already
+-- consumed the click. Returning true stops the map from also zooming in.
+local mapClickHooked = false
 local function HookMapClick()
-    local sc = WorldMapFrame and WorldMapFrame.ScrollContainer
-    if not sc or sc.spotmeNavHooked then return end
-    sc.spotmeNavHooked = true
-    sc:HookScript("OnMouseUp", function(self, button)
-        if button ~= "LeftButton" or not IsShiftKeyDown() then return end
-        if not self.GetNormalizedCursorPosition then return end
-        local nx, ny = self:GetNormalizedCursorPosition()
-        if not nx or nx < 0 or nx > 1 or ny < 0 or ny > 1 then return end
+    if mapClickHooked then return end
+    if not (WorldMapFrame and WorldMapFrame.AddCanvasClickHandler) then return end
+    mapClickHooked = true
+    WorldMapFrame:AddCanvasClickHandler(function(_, button, cursorX, cursorY)
+        if button ~= "LeftButton" or not IsShiftKeyDown() then return false end
+        if not (cursorX and cursorY) then return false end
+        if cursorX < 0 or cursorX > 1 or cursorY < 0 or cursorY > 1 then return false end
         local mapID = WorldMapFrame:GetMapID()
-        if mapID then StartNavToPoint(mapID, nx, ny) end
+        if not mapID then return false end
+        StartNavToPoint(mapID, cursorX, cursorY)
+        return true
     end)
 end
 
 --=============================================================================
--- Coordinate input: parser + target-map resolution (used by /sm, /way and the
+-- Coordinate input: parser + target-map resolution (used by /sm and the
 -- party-panel coordinate field)
 --=============================================================================
 
@@ -677,9 +711,34 @@ ns.ClassFile = ClassFile
 ns.ClassColor = ClassColor
 ns.UnitMapPos = UnitMapPos
 
+-- A route to a spot in another instance/continent cannot be walked to and would
+-- only project far off the viewed map, so drop it when the player changes world.
+local function DropRouteIfWorldChanged()
+    if not (navUnit or navPoint) then return end
+    local _, _, _, pI = UnitPosition("player")
+    local _, _, tI = NavTargetWorld()
+    if pI and tI and pI ~= tI then
+        ClearNav()
+        print("|cffff33aaSpotMe|r: " .. L.NAV_DROPPED)
+    end
+end
+
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
-loader:SetScript("OnEvent", function() HookMapClick() end)
+loader:RegisterEvent("PLAYER_ENTERING_WORLD")
+loader:RegisterEvent("ADDON_LOADED")
+loader:SetScript("OnEvent", function(_, event, addonName)
+    if event == "ADDON_LOADED" then
+        -- Blizzard_WorldMap can load after us; register the click handler then.
+        if addonName == "Blizzard_WorldMap" then HookMapClick() end
+        return
+    end
+    HookMapClick()
+    if event == "PLAYER_ENTERING_WORLD" then
+        -- position data is not reliable the instant a zone finishes loading
+        C_Timer.After(2, DropRouteIfWorldChanged)
+    end
+end)
 
 -- Follow the active route (~33/s), same cadence the shared PartyPanel ticker used.
 local ticker = CreateFrame("Frame")

@@ -1,7 +1,9 @@
-## 0.15.0 (2026-07-18)
+## 0.15.1 (2026-08-02)
 
-[Full Changelog](https://github.com/kottot13/spotme/compare/v0.14.1...v0.15.0) · [Previous Releases](https://github.com/kottot13/spotme/releases)
+[Full Changelog](https://github.com/kottot13/spotme/compare/v0.15.0...v0.15.1) · [Previous Releases](https://github.com/kottot13/spotme/releases)
 
-- **Route by coordinates**: type `/sm 41.8 66.6` to draw a trail to that spot — with the world map open the point lands on the viewed zone, otherwise on your current zone. Decimal commas (`41,8 66,6`) and comma-separated pairs (`41.8,66.6`) are accepted.
-- **Coordinate field in the party panel**: a new input row at the bottom with **Go** and **Clear** buttons. It always shows the current target — however the route was started (typed coordinates, Shift+click on the map, or right-click on a group member).
-- `/sm clear` clears the route from chat; `/way` works as a TomTom-style alias when TomTom isn't installed.
+- **Routes no longer appear on their own.** Dragging the world map with `Shift` held used to drop a waypoint, because the game reports a finished drag the same way it reports a click. `Shift`+click still sets a route; panning the map no longer does.
+- **The trail stays on the map.** A target that belongs to another zone used to trail dots off the map toward nothing; the path is now kept within the map it is drawn on.
+- **Routes clean up after themselves** — cleared when you arrive (distance adjustable in the options, or switch it off) and when you travel to another continent.
+- **The minimap button is back**, along with the minimap glow and the minimap trail. They no longer break when another addon moves or restyles the minimap.
+- The `/way` command has been removed. Use `/sm 41.8 66.6`, the coordinate field in the party panel, or `Shift`+click on the map.

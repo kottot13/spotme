@@ -11,7 +11,6 @@ globals = {
     "SlashCmdList",
     "SLASH_SPOTME1",
     "SLASH_SPOTME2",
-    "SLASH_SPOTMEWAY1",
 }
 
 -- WoW API the addon reads (known names, not typos).
@@ -19,6 +18,8 @@ read_globals = {
     "CreateFrame",
     "WorldMapFrame",
     "Minimap",
+    "MinimapCluster",
+    "SpotMeMinimapButton",
     "C_Map",
     "C_Timer",
     "C_ClassColor",

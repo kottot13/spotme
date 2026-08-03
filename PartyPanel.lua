@@ -563,10 +563,12 @@ end
 
 local function EnsureButton()
     if mbtn or not Minimap then return end
-    mbtn = CreateFrame("Button", "SpotMeMinimapButton", Minimap)
+    -- Parented to the cluster, not to Minimap: the button sits just outside the
+    -- minimap circle, which Minimap now clips away (see ns.MinimapParent).
+    mbtn = CreateFrame("Button", "SpotMeMinimapButton", ns.MinimapParent())
     mbtn:SetSize(31, 31)
     mbtn:SetFrameStrata("MEDIUM")
-    mbtn:SetFrameLevel(Minimap:GetFrameLevel() + 10)
+    mbtn:SetFrameLevel(4100)
     mbtn:RegisterForClicks("LeftButtonUp")
     mbtn:RegisterForDrag("LeftButton")
 
@@ -594,6 +596,9 @@ local function EnsureButton()
     mbtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     UpdateButtonPos()
+    -- the ring radius comes from the minimap size, so re-place the button when a
+    -- mover addon resizes the minimap
+    if Minimap.HookScript then Minimap:HookScript("OnSizeChanged", UpdateButtonPos) end
 end
 
 function ns.ToggleMinimapButton()

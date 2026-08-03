@@ -121,7 +121,13 @@ local L = {
     NAV_CLEARED   = "route cleared",
     NAV_BADCOORDS = "coords: /sm 41.8 66.6 (also 41,8 66,6 or 41.8,66.6)",
     NAV_NOMAP     = "cannot resolve the current map",
-    HELP_NAV      = "route: /sm <x> <y> | clear  (also /way when free)",
+    HELP_NAV      = "route: /sm <x> <y> | clear",
+    -- route handling
+    NAV_SECTION   = "Route",
+    NAV_ARRIVE    = "Clear on arrival (yd)",
+    NAV_ARRIVE_TIP= "Drop the route once you get this close to the target. 0 keeps it until you clear it yourself.",
+    NAV_ARRIVED   = "arrived — route cleared",
+    NAV_DROPPED   = "route cleared — the target is in another part of the world",
 }
 
 -- ===== ruRU =====
@@ -235,7 +241,12 @@ if GetLocale() == "ruRU" then
     L.NAV_CLEARED   = "маршрут сброшен"
     L.NAV_BADCOORDS = "координаты: /sm 41.8 66.6 (можно 41,8 66,6 или 41.8,66.6)"
     L.NAV_NOMAP     = "не удалось определить карту"
-    L.HELP_NAV      = "маршрут: /sm <x> <y> | clear  (также /way, если свободна)"
+    L.HELP_NAV      = "маршрут: /sm <x> <y> | clear"
+    L.NAV_SECTION   = "Маршрут"
+    L.NAV_ARRIVE    = "Сбрасывать по прибытии (яр)"
+    L.NAV_ARRIVE_TIP= "Убрать маршрут, когда подойдёшь к цели ближе этого расстояния. 0 — держать, пока не сбросишь сам."
+    L.NAV_ARRIVED   = "цель достигнута — маршрут сброшен"
+    L.NAV_DROPPED   = "маршрут сброшен — цель в другой части мира"
 end
 
 ns.L = L

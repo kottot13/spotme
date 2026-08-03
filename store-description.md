@@ -19,7 +19,7 @@ Then it does the same for your group. A minimap button opens a party or raid pan
 - **In-game options panel** (native WoW Settings UI) plus full slash commands.
 - **Party locator** — a minimap button opens a scrollable list of your party or raid: class-colored names, live coordinates, a copy button, a class filter and sorting (roster / nearest / farthest / by class). Click a member to show them on the map with a class-colored glow.
 - **Navigation** — right-click a member, or Shift+left-click any spot on the world map, to get a movable on-screen arrow and a dotted trail on both the world map and the minimap. Clear the route from the arrow or a Clear route button on the map.
-- **Route by coordinates** — type `/sm 41.8 66.6` in chat, or use the coordinate field at the bottom of the party panel (Go / Clear buttons). The field always shows the current target, however the route was started. `/way` works as an alias when TomTom isn't installed.
+- **Route by coordinates** — type `/sm 41.8 66.6` in chat, or use the coordinate field at the bottom of the party panel (Go / Clear buttons). The field always shows the current target, however the route was started. A route clears itself once you arrive (adjustable, or switch it off) and when you travel to another continent.
 - **Fully customizable trail** — pick the marker style (dots, dashes, arrows or a solid line), an optional flowing animation with adjustable speed, plus size, color (class or a fixed palette including pink), black outline and spacing — all set separately for the world map and the minimap.
 - **Localized** — displayed in your client's language (English and Russian, with more easy to add).
 - **Lightweight** — no external libraries, no measurable performance cost.
@@ -49,7 +49,6 @@ Open the options panel with **/sm** (or Esc → Options → AddOns → SpotMe). 
 | `/sm button` | Show or hide the minimap button |
 | `/sm 41.8 66.6` | Route to coordinates (open map's zone, else your zone); `41,8 66,6` and `41.8,66.6` work too |
 | `/sm clear` | Clear the current route |
-| `/way 41.8 66.6` | TomTom-style alias (only when `/way` is free) |
 | `/sm navcolor class` | Arrow color: class, red, cyan, green, yellow, black, white, pink |
 | `/sm dotcolor class` | Trail color (same palette) |
 | `/sm status` | Print the current state in chat |
