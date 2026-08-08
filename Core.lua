@@ -215,6 +215,24 @@ local classR, classG, classB = 1, 1, 1
 local panelCategory
 
 --=============================================================================
+-- Config-ready queue
+--
+-- Core fills in the config on PLAYER_LOGIN, and so do the other files. The
+-- order between separate frames' OnEvent handlers is NOT guaranteed, so a file
+-- that reads ns.GetCfg() straight from its own PLAYER_LOGIN handler wins the
+-- race only by luck. When it loses it indexes a nil config and dies, leaving
+-- the minimap button unplaced. Queue that work here instead; Core drains the
+-- queue the moment the config exists.
+--
+-- Declared below `local cfg` on purpose: placed above it, the check below
+-- would read a global that is always nil.
+--=============================================================================
+local configReady = {}
+function ns.RunWhenConfigReady(fn)
+    if cfg then fn() else configReady[#configReady + 1] = fn end
+end
+
+--=============================================================================
 -- Native (gray) player arrow size, via the world-map group-members data provider.
 -- (pin:SetPinSize does not stick in 12.0; the data provider's SetUnitPinSize does.
 --  Blizzard_WorldMap can load after us, so the re-apply hook is installed lazily.)
@@ -723,6 +741,12 @@ loader:SetScript("OnEvent", function()
         end
     end
     cfg = SpotMeDB
+
+    -- Config exists from here on: release whoever was waiting for it. Each
+    -- callback is isolated so one failure cannot strand the rest of the queue,
+    -- and a failure is reported instead of vanishing.
+    for i, fn in ipairs(configReady) do ns.SafeCall(fn, "configReady#" .. i) end
+    wipe(configReady)
 
     local _, classFile = UnitClass("player")
     local cc = (C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(classFile))

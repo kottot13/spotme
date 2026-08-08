@@ -145,9 +145,17 @@ end
 
 stub.registered = {}
 
--- Fire an event at every frame that registered for it, the way the client does.
-function stub.FireEvent(event, ...)
-    for _, f in ipairs(stub.registered[event] or {}) do
+-- Fire an event at every frame that registered for it.
+--
+-- `reverse` matters: the client does NOT guarantee the order in which separate
+-- frames' OnEvent handlers run, but a stub that always fires in registration
+-- order silently tests only the lucky ordering — which is how a config race
+-- between Core.lua and PartyPanel.lua shipped in 0.16.1. Tests run both.
+function stub.FireEvent(event, reverse, ...)
+    local frames = stub.registered[event] or {}
+    local order = {}
+    for i = 1, #frames do order[i] = reverse and frames[#frames - i + 1] or frames[i] end
+    for _, f in ipairs(order) do
         local handler = f.__scripts.OnEvent
         if handler then handler(f, event, ...) end
     end
@@ -162,6 +170,19 @@ function stub.RunTimers()
 end
 
 function stub.install()
+    -- Full reset, so the same process can load the addon more than once (each
+    -- scenario needs a clean world, not leftovers from the previous one).
+    for _, f in ipairs(stub.frames) do
+        if f.__name then _G[f.__name] = nil end
+    end
+    _G.SpotMeMinimapButton = nil
+    _G.SpotMe_Debug = nil
+    _G.SpotMeDB = nil
+    stub.frames = {}
+    stub.registered = {}
+    stub.timers = {}
+    stub.unstubbed = {}
+
     _G.CreateFrame = function(frameType, name, parent) return stub.NewFrame(frameType, name, parent) end
 
     _G.UIParent = stub.NewFrame("Frame", "UIParent")
@@ -227,11 +248,14 @@ function stub.install()
         return out
     end
 
-    -- Settings API: every constructor returns a chainable stub frame.
-    _G.Settings = setmetatable({}, {
+    -- Settings API. Constructors return TWO frames, because
+    -- RegisterVerticalLayoutCategory answers (category, layout) and callers
+    -- destructure both — returning a single value left `layout` nil and looked
+    -- like an addon bug. Callers that want one value ignore the second.
+    _G.Settings = setmetatable({ VarType = { Boolean = "boolean", Number = "number", String = "string" } }, {
         __index = function(_, key)
             record(stub.unstubbed, "Settings." .. key)
-            return function() return stub.NewFrame("SettingsControl") end
+            return function() return stub.NewFrame("SettingsControl"), stub.NewFrame("SettingsLayout") end
         end
     })
     _G.CreateSettingsListSectionHeaderInitializer = function() return stub.NewFrame("Initializer") end

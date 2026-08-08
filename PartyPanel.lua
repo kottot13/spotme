@@ -690,12 +690,16 @@ end
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
-    -- Guarded so a failure here is reported with context instead of surfacing
-    -- as a bare Lua error the player may have error display turned off for.
-    ns.SafeCall(function()
+    -- Via Core's queue, not straight from this handler: Core fills in the config
+    -- on this same event and the order between files is not guaranteed. Running
+    -- it here directly makes the button depend on winning that race, and losing
+    -- it means indexing a nil config. Core wraps each queued callback in
+    -- SafeCall, so a failure is still reported rather than lost.
+    ns.RunWhenConfigReady(function()
         EnsureButton()
-        if mbtn then mbtn:SetShown(not ns.GetCfg().minimapButton.hide) end
-    end, "minimap button setup")
+        local c = ns.GetCfg()
+        if mbtn and c and c.minimapButton then mbtn:SetShown(not c.minimapButton.hide) end
+    end)
 end)
 
 local roster = CreateFrame("Frame")
