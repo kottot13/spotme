@@ -546,9 +546,7 @@ local mbtn
 
 local function UpdateButtonPos()
     if not mbtn then return end
-    local c = ns.GetCfg()
-    if not (c and c.minimapButton) then return end
-    local angle = math.rad(c.minimapButton.angle or 214)
+    local angle = math.rad(ns.GetCfg().minimapButton.angle or 214)
     local r = (Minimap:GetWidth() / 2) + 5
     mbtn:ClearAllPoints()
     mbtn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * r, math.sin(angle) * r)
@@ -623,8 +621,7 @@ function SpotMe_Debug()
     out("version", version .. "  client=" .. tostring(build) .. "." .. tostring(buildNum)
         .. "  locale=" .. tostring(GetLocale()))
 
-    -- Recorded errors next: these are the ones that used to disappear into a
-    -- bare pcall, so they are the first thing worth seeing.
+    -- Recorded errors next: these are the ones a bare pcall used to discard.
     local errs = ns.GetErrors and ns.GetErrors() or {}
     if #errs == 0 then
         out("errors", "none recorded")
@@ -636,8 +633,6 @@ function SpotMe_Debug()
     end
 
     if not mbtn then
-        -- EnsureButton runs on PLAYER_LOGIN via ns.RunWhenConfigReady, so a nil
-        -- button means that queue never drained — not that the button is hidden.
         out("button", "NOT CREATED (EnsureButton never ran)")
         out("config", db and ("hide=" .. tostring(db.hide)) or "missing")
         return
@@ -695,13 +690,12 @@ end
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
-    -- via Core's queue, not straight from this handler: Core fills in the config on this
-    -- same event and the order between files is not guaranteed (see ns.RunWhenConfigReady)
-    ns.RunWhenConfigReady(function()
+    -- Guarded so a failure here is reported with context instead of surfacing
+    -- as a bare Lua error the player may have error display turned off for.
+    ns.SafeCall(function()
         EnsureButton()
-        local c = ns.GetCfg()
-        if mbtn and c and c.minimapButton then mbtn:SetShown(not c.minimapButton.hide) end
-    end)
+        if mbtn then mbtn:SetShown(not ns.GetCfg().minimapButton.hide) end
+    end, "minimap button setup")
 end)
 
 local roster = CreateFrame("Frame")
