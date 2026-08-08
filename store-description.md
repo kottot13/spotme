@@ -52,6 +52,7 @@ Open the options panel with **/sm** (or Esc → Options → AddOns → SpotMe). 
 | `/sm navcolor class` | Arrow color: class, red, cyan, green, yellow, black, white, pink |
 | `/sm dotcolor class` | Trail color (same palette) |
 | `/sm status` | Print the current state in chat |
+| `/sm debug` | Print diagnostics — version, client build, recent errors, minimap-button placement. Paste this into a bug report |
 | `/sm reset` | Reset all settings and reload |
 
 Slash command: **/sm**.

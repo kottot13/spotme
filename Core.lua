@@ -12,6 +12,56 @@ local L = ns.L
 local CONFIG_VERSION = 10
 local DEFAULT_PLAYER_SIZE = 27
 
+--=============================================================================
+-- Error reporting
+--
+-- Guarded calls used to be plain `pcall(fn)`, which swallowed the error whole:
+-- when the callback that builds the minimap button failed, the button simply
+-- never appeared and nothing was printed anywhere. A silent failure costs a
+-- debugging session; a visible one costs a glance.
+--
+-- SafeCall keeps the isolation (one broken piece must not take the addon down)
+-- but records what happened, prints it once, and forwards it to the player's
+-- error handler so BugSack/BugGrabber picks it up like any other addon error.
+--=============================================================================
+local MAX_ERRORS = 10
+local errors = {}
+
+local function ErrorHandler(err)
+    -- debugstack from inside the handler still sees the frame that raised.
+    return { msg = tostring(err), stack = debugstack and debugstack(2, 6, 0) or "" }
+end
+
+function ns.RecordError(label, info)
+    local entry = {
+        label = label or "?",
+        msg = type(info) == "table" and info.msg or tostring(info),
+        stack = type(info) == "table" and info.stack or "",
+        when = date and date("%H:%M:%S") or ""
+    }
+    errors[#errors + 1] = entry
+    -- Ring buffer: a repeating OnUpdate error must not grow without bound.
+    if #errors > MAX_ERRORS then table.remove(errors, 1) end
+
+    print("|cffff33aaSpotMe|r |cffff4444error|r in " .. entry.label .. ": " .. entry.msg)
+    print("|cffff33aaSpotMe|r: run |cffffff00/sm debug|r for details.")
+
+    -- Hand it to whatever error handler the player runs (BugGrabber replaces
+    -- this), so the report lands where they already look for addon errors.
+    local handler = geterrorhandler and geterrorhandler()
+    if handler then handler(entry.label .. ": " .. entry.msg) end
+    return entry
+end
+
+-- Drop-in replacement for `pcall(fn)` that does not lose the error.
+function ns.SafeCall(fn, label)
+    local ok, info = xpcall(fn, ErrorHandler)
+    if not ok then ns.RecordError(label, info) end
+    return ok
+end
+
+function ns.GetErrors() return errors end
+
 local UPDATE_INTERVAL = 0.02
 local SCALE_MIN, SCALE_MAX = 0.7, 2.5
 
@@ -76,6 +126,9 @@ local DEFAULTS = {
     navColor      = "class",    -- arrow color: class | red | cyan | green | yellow | black | white | pink
     dotColor      = "class",    -- path-dot color (same palette)
     navArrive     = 20,         -- clear the route within this many yards (0 = never)
+    chainMode     = false,      -- Ctrl+Shift+click appends points instead of one-point routes
+    gameWaypoint  = true,       -- also drop the game's own map pin (it draws its own white trail)
+    navChain      = {},         -- queue of {mapID,x,y}; [1] is the current target
     -- navigation path markers (dots|dashes|arrows|line), colored core + black outline,
     -- per map, plus spacing and a "flowing" animation
     ndWorldShow = true, ndWorldStyle = "dots", ndWorldSize = 16, ndWorldRim = 4, ndWorldRimOn = true, ndWorldGap = 26, ndWorldAnim = false, ndWorldFlow = 34,
@@ -482,6 +535,13 @@ local function SetupPanel()
     header(L.NAV_SECTION)
     slider("navArrive", L.NAV_ARRIVE, L.NAV_ARRIVE_TIP, 0, 100, 5,
         function() return cfg.navArrive end, function(v) cfg.navArrive = v end)
+    checkbox("chainMode", L.CHAIN_CB, L.CHAIN_TIP,
+        function() return cfg.chainMode end, function(v) cfg.chainMode = v end)
+    checkbox("gameWaypoint", L.GW_CB, L.GW_TIP,
+        function() return cfg.gameWaypoint end, function(v)
+            cfg.gameWaypoint = v
+            if not v and C_Map.ClearUserWaypoint then C_Map.ClearUserWaypoint() end
+        end)
 
     local function restyle() if ns.RestyleDots then ns.RestyleDots() end end
     local function styleOptions()
@@ -631,12 +691,15 @@ SlashCmdList.SPOTME = function(msg)
         local n = tonumber(rest)
         if n then cfg.minimapSize = n; if minimapMarker then RebuildInner(minimapMarker, n) end; say(string.format(L.MSIZE_SET, n))
         else say(L.MSIZE_FMT) end
+    elseif cmd == "debug" then
+        SpotMe_Debug()
     elseif cmd == "status" then
         local btn = SpotMeMinimapButton
         say("world=" .. tostring(cfg.showWorld) .. " mini=" .. tostring(cfg.showMinimap)
             .. " theme=" .. tostring(cfg.theme) .. " colorChoice=" .. tostring(cfg.colorChoice)
             .. " panel=" .. tostring(panelCategory ~= nil)
-            .. " btn=" .. (btn and (btn:IsVisible() and "visible" or "hidden") or "missing"))
+            .. " btn=" .. (btn and (btn:IsVisible() and "visible" or "hidden") or "missing")
+            .. " chain=" .. tostring(cfg.chainMode) .. "/" .. #cfg.navChain)
     elseif PRESETS[cmd] then
         SetColorChoice(cmd); say(string.format(L.COLOR_SET, cmd))
     elseif cmd == "color" then
@@ -658,6 +721,16 @@ ns.BuildGlow = BuildGlow
 ns.CanvasZoom = CanvasZoom
 ns.OpenSettings = OpenPanel
 function ns.GetCfg() return cfg end
+
+-- Core owns the config, and the other files need it as soon as they load. Handler order
+-- for the SAME event across files is not guaranteed by the client, so they must not read
+-- the config straight from their own PLAYER_LOGIN handler — PartyPanel did, and errored
+-- out (leaving the minimap button unplaced) whenever it happened to run before Core.
+-- Queue the work here instead; Core runs it the moment the config exists.
+local configReady = {}
+function ns.RunWhenConfigReady(fn)
+    if cfg then fn() else configReady[#configReady + 1] = fn end
+end
 
 --=============================================================================
 -- Loading
@@ -681,12 +754,17 @@ loader:SetScript("OnEvent", function()
         or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFile])
     if cc then classR, classG, classB = cc.r, cc.g, cc.b end
 
+    -- config exists from here on: release whoever was waiting for it. Each
+    -- callback is isolated so one failure cannot strand the rest of the queue,
+    -- but a failure is now reported instead of vanishing.
+    for i, fn in ipairs(configReady) do ns.SafeCall(fn, "configReady#" .. i) end
+    wipe(configReady)
+
     EnsureWorldMarker()
     EnsureMinimapMarker()
     HookArrowSize()
 
-    local ok = pcall(SetupPanel)
-    if not ok then panelCategory = nil end
+    if not ns.SafeCall(SetupPanel, "SetupPanel") then panelCategory = nil end
 end)
 
 local mapWatcher = CreateFrame("Frame")

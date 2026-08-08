@@ -55,7 +55,7 @@ local L = {
     HELP_SCREENS = "screens: world | minimap | on | off",
     HELP_THEMES  = "themes: theme %s",
     HELP_COLORS  = "colors: %s | rainbow | class | color r g b",
-    HELP_MISC    = "other: flicker | speed N | arrow N | glowsize N | minisize N | status | reset",
+    HELP_MISC    = "other: flicker | speed N | arrow N | glowsize N | minisize N | status | debug | reset",
     ON           = "on",
     OFF          = "off",
     WORLD_STATE  = "world map: %s",
@@ -128,6 +128,18 @@ local L = {
     NAV_ARRIVE_TIP= "Drop the route once you get this close to the target. 0 keeps it until you clear it yourself.",
     NAV_ARRIVED   = "arrived — route cleared",
     NAV_DROPPED   = "route cleared — the target is in another part of the world",
+    -- route chain
+    CHAIN_CB      = "Route chain (several points)",
+    CHAIN_TIP     = "Ctrl+Shift+click the map to add the next point, up to 10. Click an existing point the same way to remove it.",
+    CHAIN_ADDED   = "point %d added — %.1f, %.1f (%s)",
+    CHAIN_REMOVED = "point %d removed — %d left",
+    CHAIN_FULL    = "the route already has %d points",
+    CHAIN_REACHED = "point reached — %d left",
+    CHAIN_DONE    = "route finished",
+    CHAIN_RESTORED= "route restored: %d points",
+    CHAIN_OFF     = "route chain is switched off in the settings",
+    GW_CB         = "Also place the game's map pin",
+    GW_TIP        = "Puts Blizzard's own pin on the target and tracks it, which makes the game draw its white dotted trail and take over quest tracking. Turn off to keep only SpotMe's own route.",
 }
 
 -- ===== ruRU =====
@@ -177,7 +189,7 @@ if GetLocale() == "ruRU" then
     L.HELP_SCREENS = "экраны: world | minimap | on | off"
     L.HELP_THEMES  = "темы: theme %s"
     L.HELP_COLORS  = "цвет: %s | rainbow | class | color r g b"
-    L.HELP_MISC    = "прочее: flicker | speed N | arrow N | glowsize N | minisize N | status | reset"
+    L.HELP_MISC    = "прочее: flicker | speed N | arrow N | glowsize N | minisize N | status | debug | reset"
     L.ON           = "вкл"
     L.OFF          = "выкл"
     L.WORLD_STATE  = "большая карта: %s"
@@ -247,6 +259,17 @@ if GetLocale() == "ruRU" then
     L.NAV_ARRIVE_TIP= "Убрать маршрут, когда подойдёшь к цели ближе этого расстояния. 0 — держать, пока не сбросишь сам."
     L.NAV_ARRIVED   = "цель достигнута — маршрут сброшен"
     L.NAV_DROPPED   = "маршрут сброшен — цель в другой части мира"
+    L.CHAIN_CB      = "Маршрут из нескольких точек"
+    L.CHAIN_TIP     = "Ctrl+Shift+клик по карте добавляет следующую точку, до 10. Такой же клик по существующей точке убирает её."
+    L.CHAIN_ADDED   = "точка %d добавлена — %.1f, %.1f (%s)"
+    L.CHAIN_REMOVED = "точка %d убрана — осталось %d"
+    L.CHAIN_FULL    = "в маршруте уже %d точек"
+    L.CHAIN_REACHED = "точка пройдена — осталось %d"
+    L.CHAIN_DONE    = "маршрут пройден"
+    L.CHAIN_RESTORED= "маршрут восстановлен: точек — %d"
+    L.CHAIN_OFF     = "режим нескольких точек выключен в настройках"
+    L.GW_CB         = "Ставить и метку самой игры"
+    L.GW_TIP        = "Ставит на цель родную метку Blizzard и включает её отслеживание — игра рисует свой белый пунктир и перехватывает отслеживание квеста. Выключи, чтобы остался только маршрут SpotMe."
 end
 
 ns.L = L

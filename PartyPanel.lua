@@ -546,7 +546,9 @@ local mbtn
 
 local function UpdateButtonPos()
     if not mbtn then return end
-    local angle = math.rad(ns.GetCfg().minimapButton.angle or 214)
+    local c = ns.GetCfg()
+    if not (c and c.minimapButton) then return end
+    local angle = math.rad(c.minimapButton.angle or 214)
     local r = (Minimap:GetWidth() / 2) + 5
     mbtn:ClearAllPoints()
     mbtn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * r, math.sin(angle) * r)
@@ -601,6 +603,79 @@ local function EnsureButton()
     if Minimap.HookScript then Minimap:HookScript("OnSizeChanged", UpdateButtonPos) end
 end
 
+-- Minimap button diagnostics.
+--
+-- Deliberately a global taking no arguments: the chat edit box cuts input at
+-- 255 bytes, so a long `/run` one-liner is truncated mid-token and dies with a
+-- parser error instead of running. `/run SpotMe_Debug()` always fits, and the
+-- same call backs `/sm debug`.
+function SpotMe_Debug()
+    local function out(label, value) print("|cffff33aaSpotMe|r " .. label .. ": " .. tostring(value)) end
+
+    local cfg = ns.GetCfg()
+    local db = cfg and cfg.minimapButton
+
+    -- Environment first: a report pasted without it is nearly useless, because
+    -- the answer is usually "which build / which locale / which version".
+    local version = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata("SpotMe", "Version"))
+        or "unknown"
+    local build, buildNum = GetBuildInfo()
+    out("version", version .. "  client=" .. tostring(build) .. "." .. tostring(buildNum)
+        .. "  locale=" .. tostring(GetLocale()))
+
+    -- Recorded errors next: these are the ones that used to disappear into a
+    -- bare pcall, so they are the first thing worth seeing.
+    local errs = ns.GetErrors and ns.GetErrors() or {}
+    if #errs == 0 then
+        out("errors", "none recorded")
+    else
+        out("errors", #errs .. " recorded (newest last)")
+        for _, e in ipairs(errs) do
+            print("  |cffff4444" .. tostring(e.when) .. "|r [" .. tostring(e.label) .. "] " .. tostring(e.msg))
+        end
+    end
+
+    if not mbtn then
+        -- EnsureButton runs on PLAYER_LOGIN via ns.RunWhenConfigReady, so a nil
+        -- button means that queue never drained — not that the button is hidden.
+        out("button", "NOT CREATED (EnsureButton never ran)")
+        out("config", db and ("hide=" .. tostring(db.hide)) or "missing")
+        return
+    end
+
+    local parent = mbtn:GetParent()
+    -- IsShown is this frame's own flag; IsVisible also accounts for the parent
+    -- chain, so "shown but not visible" points at the parent, not at us.
+    out("shown/visible/alpha", string.format("%s / %s / %.2f",
+        tostring(mbtn:IsShown()), tostring(mbtn:IsVisible()), mbtn:GetAlpha()))
+    out("parent", (parent and (parent:GetName() or "unnamed")) .. " visible=" .. tostring(parent and parent:IsVisible()))
+    out("strata/level", mbtn:GetFrameStrata() .. " / " .. mbtn:GetFrameLevel())
+    out("size/scale", string.format("%.0fx%.0f  effScale=%.2f", mbtn:GetWidth(), mbtn:GetHeight(), mbtn:GetEffectiveScale()))
+
+    local x, y = mbtn:GetCenter()
+    -- `Minimap and Minimap:GetCenter()` would truncate the pair to one value
+    -- and leave my nil, so guard with a statement rather than an expression.
+    local mx, my
+    if Minimap then mx, my = Minimap:GetCenter() end
+    if x and mx then
+        local dx, dy = x - mx, y - my
+        out("offset from minimap", string.format("dx=%.1f dy=%.1f  r=%.1f", dx, dy, math.sqrt(dx * dx + dy * dy)))
+        out("expected ring radius", string.format("%.1f (angle=%s)", Minimap:GetWidth() / 2 + 5, tostring(db and db.angle)))
+    else
+        out("offset from minimap", "no anchor — GetCenter returned nil")
+    end
+
+    -- Off-screen placement looks identical to "invisible" in game, so name it.
+    if x and y then
+        local w, h = UIParent:GetWidth(), UIParent:GetHeight()
+        local scale = mbtn:GetEffectiveScale() / UIParent:GetEffectiveScale()
+        local sx, sy = x * scale, y * scale
+        out("on screen", (sx >= 0 and sy >= 0 and sx <= w and sy <= h) and "yes" or "NO — outside UIParent")
+    end
+
+    out("config", db and ("hide=" .. tostring(db.hide) .. " angle=" .. tostring(db.angle)) or "missing")
+end
+
 function ns.ToggleMinimapButton()
     local db = ns.GetCfg().minimapButton
     db.hide = not db.hide
@@ -620,8 +695,13 @@ end
 local loader = CreateFrame("Frame")
 loader:RegisterEvent("PLAYER_LOGIN")
 loader:SetScript("OnEvent", function()
-    EnsureButton()
-    if mbtn then mbtn:SetShown(not ns.GetCfg().minimapButton.hide) end
+    -- via Core's queue, not straight from this handler: Core fills in the config on this
+    -- same event and the order between files is not guaranteed (see ns.RunWhenConfigReady)
+    ns.RunWhenConfigReady(function()
+        EnsureButton()
+        local c = ns.GetCfg()
+        if mbtn and c and c.minimapButton then mbtn:SetShown(not c.minimapButton.hide) end
+    end)
 end)
 
 local roster = CreateFrame("Frame")

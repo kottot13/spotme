@@ -74,6 +74,7 @@ Open the panel with **`/sm`** (or `Esc → Options → AddOns → SpotMe`), or u
 | `/sm minisize 46` | glow size on the minimap |
 | `/sm flicker` | toggle the soft brightness flicker |
 | `/sm status` | show current state |
+| `/sm debug` | print diagnostics — addon version, client build, recent errors, minimap-button placement. Paste this into a bug report |
 | `/sm reset` | reset all settings |
 
 **Party locator & navigation**

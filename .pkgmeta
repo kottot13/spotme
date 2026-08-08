@@ -17,6 +17,7 @@ ignore:
   - "store-description.md"
   - "CLAUDE.md"
   - "research"
+  - "tests"
 
 # No external libraries yet. If you later embed some (Ace3, LibStub,
 # HereBeDragons), add them here, e.g.:

@@ -36,21 +36,54 @@ local function UnitMapPos(unit)
     return mapID, x, y
 end
 
--- Drop a Blizzard navigation waypoint on the member's position (not protected).
-local function WaypointTo(unit)
-    local mapID, x, y = UnitMapPos(unit)
-    if not mapID then return end
+-- Blizzard's own map pin. Setting and super-tracking it makes the GAME draw its white
+-- dotted trail and take over quest tracking, and that pin lives in the client — it
+-- outlives our route (and the addon) unless we clear it, which is why `ourWaypoint`
+-- is tracked and ClearNav drops it.
+local ourWaypoint = false
+
+local function SetGameWaypoint(mapID, x, y)
+    local c = ns.GetCfg()
+    if not (c and c.gameWaypoint) then return end
     if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then return end
     C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x, y))
+    ourWaypoint = true
     if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
         C_SuperTrack.SetSuperTrackedUserWaypoint(true)
     end
 end
 
+local function ClearGameWaypoint()
+    if not ourWaypoint then return end   -- never clear a pin the player set themselves
+    ourWaypoint = false
+    if C_Map.ClearUserWaypoint then C_Map.ClearUserWaypoint() end
+end
+
+-- Drop a Blizzard navigation waypoint on the member's position (not protected).
+local function WaypointTo(unit)
+    local mapID, x, y = UnitMapPos(unit)
+    if not mapID then return end
+    SetGameWaypoint(mapID, x, y)
+end
+
 --=============================================================================
 -- Navigation state: on-screen arrow + dotted map path (class colored)
 --=============================================================================
-local navUnit, navPoint     -- navigating to a group member, or to a fixed map point
+local navUnit               -- navigating to a group member (session only, a unit token
+                            -- means nothing after a relog)
+-- Routing to fixed points is a QUEUE that lives in SpotMeDB.navChain, so it survives a
+-- reload. Element [1] is always the current target, which lets every existing behavior
+-- (arrow, distance, arrival, coordinate field, chat message) keep working on the head:
+-- an ordinary one-point route is simply a chain of length 1, not a separate code path.
+local MAX_CHAIN = 10
+local function Chain()
+    local c = ns.GetCfg()
+    return c and c.navChain
+end
+local function Head()
+    local c = Chain()
+    return c and c[1]
+end
 local navR, navG, navB = 1, 1, 1
 local arrow, pathParent
 local pathDots = {}
@@ -239,14 +272,42 @@ end
 ns.RestyleDots = RestyleDots
 
 -- Solid-line style: a colored line plus a black line behind it for the outline.
-local worldLine, worldLineBack, miniLine, miniLineBack
-local function EnsureWorldLine()
-    if worldLine then return end
-    EnsurePathParent()
-    worldLineBack = pathParent:CreateLine(nil, "ARTWORK")
-    worldLineBack:SetColorTexture(0, 0, 0, 1)
-    worldLine = pathParent:CreateLine(nil, "OVERLAY")
-    worldLine:SetColorTexture(1, 1, 1, 1)
+-- Pooled on the world map, since a chain needs one line per segment.
+local miniLine, miniLineBack
+local worldLines = {}
+local function GetWorldLine(i)
+    local wl = worldLines[i]
+    if not wl then
+        EnsurePathParent()
+        local back = pathParent:CreateLine(nil, "ARTWORK")
+        back:SetColorTexture(0, 0, 0, 1)
+        local line = pathParent:CreateLine(nil, "OVERLAY")
+        line:SetColorTexture(1, 1, 1, 1)
+        wl = { line = line, back = back }
+        worldLines[i] = wl
+    end
+    return wl
+end
+local function HideWorldLines(from)
+    for i = from or 1, #worldLines do
+        worldLines[i].line:Hide(); worldLines[i].back:Hide()
+    end
+end
+
+-- Index labels (1, 2, 3…) drawn on the chain points; without them a multi-point
+-- route does not say which way round it is walked.
+local numTags = {}
+local function GetNumTag(i)
+    local t = numTags[i]
+    if not t then
+        EnsurePathParent()
+        t = pathParent:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        numTags[i] = t
+    end
+    return t
+end
+local function HideNumTags(from)
+    for i = from or 1, #numTags do numTags[i]:Hide() end
 end
 local miniLineHost
 local function EnsureMiniLine()
@@ -261,8 +322,43 @@ local function EnsureMiniLine()
     miniLine = miniLineHost:CreateLine(nil, "OVERLAY")
     miniLine:SetColorTexture(1, 1, 1, 1)
 end
-local function HideWorldLine() if worldLine then worldLine:Hide(); worldLineBack:Hide() end end
 local function HideMiniLine()  if miniLine then miniLine:Hide(); miniLineBack:Hide() end end
+
+-- Draw one segment of the route as markers, continuing the SHARED marker budget so a
+-- 10-point chain cannot multiply the dot count. Returns the new marker count.
+local MAX_MARKERS = 200
+local function DrawDotSegment(ax, ay, bx, by, n, canvas, w, h, isc, zoom, wcfg, dotR, dotG, dotB)
+    local dxp, dyp = (bx - ax) * w, (by - ay) * h
+    local pathU = math.sqrt(dxp * dxp + dyp * dyp)
+    local stepU = (zoom > 0) and (wcfg.ndWorldGap / zoom) or (math.min(w, h) * 0.02)
+    if stepU <= 0 or pathU <= 0 then return n end
+    local style = wcfg.ndWorldStyle
+    local rot = (style == "dashes" or style == "arrows")
+    local ang = rot and MarkerAngle(style, dxp, -dyp) or 0
+    local phase = wcfg.ndWorldAnim and ((GetTime() * wcfg.ndWorldFlow * isc) % stepU) or 0
+    local dd, steps = (phase > 0 and phase or stepU), 0
+    while dd < pathU and n < MAX_MARKERS and steps < 600 do
+        local t = dd / pathU
+        steps = steps + 1
+        dd = dd + stepU
+        local mx = ax + (bx - ax) * t
+        local my = ay + (by - ay) * t
+        -- Skip whatever falls off the map: a target that belongs to another map
+        -- projects outside 0-1, and drawing it would run a trail of dots across
+        -- the screen toward nothing.
+        if mx >= 0 and mx <= 1 and my >= 0 and my <= 1 then
+            n = n + 1
+            local d = GetDot(n)
+            d:ClearAllPoints()
+            d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
+            d.inner:SetScale(isc)
+            d.inner.fill:SetVertexColor(dotR, dotG, dotB)
+            if rot then d.inner.fill:SetRotation(ang); d.inner.back:SetRotation(ang) end
+            d:Show()
+        end
+    end
+    return n
+end
 
 -- "Clear route" button on the world map, shown while a route is active so the
 -- route can be cleared without leaving the map.
@@ -286,8 +382,10 @@ local function NavTargetWorld()
         if not UnitExists(navUnit) then return nil end
         local ty, tx, _, tI = UnitPosition(navUnit)
         return ty, tx, tI
-    elseif navPoint then
-        local cont, wp = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+    end
+    local p = Head()
+    if p then
+        local cont, wp = C_Map.GetWorldPosFromMapPos(p.mapID, CreateVector2D(p.x, p.y))
         if cont and wp then return wp.x, wp.y, cont end   -- swap to wp.y, wp.x if the point arrow mirrors
     end
     return nil
@@ -309,51 +407,59 @@ local function WorldToMapPos(mapID, wx, wy)
     return (px * ayy - py * ayx) / det, (axx * py - axy * px) / det
 end
 
--- True only when the Blizzard user waypoint is our navPoint (same world spot). Guards
+-- True only when the Blizzard user waypoint is our current target (same world spot). Guards
 -- against following a stale/other waypoint left over from a previous or external point.
 local function WaypointMatchesNav()
-    if not (navPoint and C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() and C_Map.GetUserWaypoint) then
+    local p = Head()
+    if not (p and C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() and C_Map.GetUserWaypoint) then
         return false
     end
     local up = C_Map.GetUserWaypoint()
     if not (up and up.position and up.uiMapID) then return false end
     local _, uw = C_Map.GetWorldPosFromMapPos(up.uiMapID, up.position)
-    local _, nw = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
+    local _, nw = C_Map.GetWorldPosFromMapPos(p.mapID, CreateVector2D(p.x, p.y))
     if not (uw and nw) then return false end
     return math.abs(uw.x - nw.x) < 5 and math.abs(uw.y - nw.y) < 5
 end
 
--- Target position (0-1) on a given ui map, for the dotted paths.
+-- Position (0-1) of one stored point on a given ui map. `isHead` gates the Blizzard
+-- waypoint shortcut, which only ever tracks the current target.
+local function PointMapPos(pt, mapID, isHead)
+    if not (pt and mapID) then return nil end
+    if pt.mapID == mapID then
+        return pt.x, pt.y   -- same map: stored coords
+    end
+    -- Blizzard's own cross-map translation of our waypoint: works on parent, sibling
+    -- and the world/continent overviews (same position as the yellow waypoint pin).
+    -- Only trust it when the Blizzard waypoint is actually our point.
+    if isHead and C_Map.GetUserWaypointPositionForMap and WaypointMatchesNav() then
+        local wp = C_Map.GetUserWaypointPositionForMap(mapID)
+        if wp then local x, y = wp:GetXY(); if x then return x, y end end
+    end
+    -- fallback: affine world->map projection, but ONLY when the point and the viewed
+    -- map are the same continent — cross-continent coords are unrelated and would
+    -- project the point to a random (wrong) spot.
+    local info = C_Map.GetMapInfo(mapID)
+    if info and info.mapType and info.mapType >= 2 then
+        local pcont, w2 = C_Map.GetWorldPosFromMapPos(pt.mapID, CreateVector2D(pt.x, pt.y))
+        local mcont = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0.5, 0.5))
+        if w2 and pcont == mcont then
+            local mx, my = WorldToMapPos(mapID, w2.x, w2.y)
+            if mx then return mx, my end
+        end
+    end
+    return nil
+end
+
+-- Current target position (0-1) on a given ui map, for the dotted paths.
 local function NavTargetMapPos(mapID)
     if not mapID then return nil end
     if navUnit then
         local p = C_Map.GetPlayerMapPosition(mapID, navUnit)
         if p then return p:GetXY() end
-    elseif navPoint then
-        if navPoint.mapID == mapID then
-            return navPoint.x, navPoint.y   -- same map: stored coords
-        end
-        -- Blizzard's own cross-map translation of our waypoint: works on parent, sibling
-        -- and the world/continent overviews (same position as the yellow waypoint pin).
-        -- Only trust it when the Blizzard waypoint is actually our point.
-        if C_Map.GetUserWaypointPositionForMap and WaypointMatchesNav() then
-            local wp = C_Map.GetUserWaypointPositionForMap(mapID)
-            if wp then local x, y = wp:GetXY(); if x then return x, y end end
-        end
-        -- fallback: affine world->map projection, but ONLY when the point and the viewed
-        -- map are the same continent — cross-continent coords are unrelated and would
-        -- project the point to a random (wrong) spot.
-        local info = C_Map.GetMapInfo(mapID)
-        if info and info.mapType and info.mapType >= 2 then
-            local pcont, w2 = C_Map.GetWorldPosFromMapPos(navPoint.mapID, CreateVector2D(navPoint.x, navPoint.y))
-            local mcont = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(0.5, 0.5))
-            if w2 and pcont == mcont then
-                local mx, my = WorldToMapPos(mapID, w2.x, w2.y)
-                if mx then return mx, my end
-            end
-        end
+        return nil
     end
-    return nil
+    return PointMapPos(Head(), mapID, true)
 end
 
 -- Player position (0-1) on a given ui map. When the player isn't on the viewed map,
@@ -371,6 +477,14 @@ local function PlayerMapPos(mapID)
     return nil
 end
 
+-- Keep Blizzard's own waypoint pin on the current head point, so the built-in pin and
+-- our route never disagree after the chain advances or a point is removed.
+local function SyncWaypoint()
+    local p = Head()
+    if not p then return end
+    SetGameWaypoint(p.mapID, p.x, p.y)
+end
+
 -- Tell the party panel (or anyone else) what we are navigating to, as display text.
 local function NotifyNavTarget()
     if not ns.OnNavTargetChanged then return end
@@ -382,19 +496,23 @@ local function NotifyNavTarget()
         else
             ns.OnNavTargetChanged(name)
         end
-    elseif navPoint then
-        local info = C_Map.GetMapInfo(navPoint.mapID)
-        ns.OnNavTargetChanged(string.format("%.1f, %.1f — %s",
-            navPoint.x * 100, navPoint.y * 100, (info and info.name) or "?"))
     else
-        ns.OnNavTargetChanged(nil)
+        local p, c = Head(), Chain()
+        if p then
+            local info = C_Map.GetMapInfo(p.mapID)
+            local text = string.format("%.1f, %.1f — %s", p.x * 100, p.y * 100, (info and info.name) or "?")
+            if c and #c > 1 then text = text .. string.format(" (1/%d)", #c) end
+            ns.OnNavTargetChanged(text)
+        else
+            ns.OnNavTargetChanged(nil)
+        end
     end
 end
 
 function UpdateNav()
-    if not navUnit and not navPoint then
+    if not navUnit and not Head() then
         if arrow then arrow:Hide() end
-        HideDots(); HideMiniDots(); HideWorldLine(); HideMiniLine()
+        HideDots(); HideMiniDots(); HideWorldLines(1); HideNumTags(1); HideMiniLine()
         return
     end
     if navUnit and not UnitExists(navUnit) then ClearNav(); return end
@@ -416,11 +534,21 @@ function UpdateNav()
         worldDist = math.sqrt(ddx * ddx + ddy * ddy)
     end
 
-    -- Arrived: clear the route instead of leaving a stale trail behind for hours.
+    -- Arrived. With points still queued the head is dropped and the next one becomes the
+    -- target; otherwise the route is cleared rather than left as a stale trail for hours.
     local arrive = ns.GetCfg().navArrive or 0
     if worldDist and arrive > 0 and worldDist <= arrive then
+        local chain = Chain()
+        if not navUnit and chain and #chain > 1 then
+            table.remove(chain, 1)
+            print("|cffff33aaSpotMe|r: " .. string.format(L.CHAIN_REACHED, #chain))
+            SyncWaypoint()
+            NotifyNavTarget()
+            return
+        end
+        local wasChain = (not navUnit) and ns.GetCfg().chainMode
         ClearNav()
-        print("|cffff33aaSpotMe|r: " .. L.NAV_ARRIVED)
+        print("|cffff33aaSpotMe|r: " .. (wasChain and L.CHAIN_DONE or L.NAV_ARRIVED))
         return
     end
 
@@ -446,65 +574,87 @@ function UpdateNav()
     if wcfg.ndWorldShow and WorldMapFrame:IsShown() and WorldMapFrame.GetCanvas then
         local mapID = WorldMapFrame:GetMapID()
         local pmx, pmy = PlayerMapPos(mapID)
-        local tmx, tmy = NavTargetMapPos(mapID)   -- nil on maps where the point can't be placed
-        if pmx and tmx then
+        -- Vertices: the player, then every target that resolves on the viewed map. A
+        -- point that cannot be placed here ends the list — bridging over it would draw
+        -- a segment to somewhere that is not actually the next stop.
+        local verts = {}
+        if pmx then
+            verts[1] = { x = pmx, y = pmy }
+            if navUnit then
+                local tx2, ty2 = NavTargetMapPos(mapID)
+                if tx2 then verts[2] = { x = tx2, y = ty2 } end
+            else
+                local chain = Chain() or {}
+                for i = 1, #chain do
+                    local cx, cy = PointMapPos(chain[i], mapID, i == 1)
+                    if not cx then break end
+                    verts[#verts + 1] = { x = cx, y = cy, idx = i }
+                end
+            end
+        end
+
+        if #verts >= 2 then
             local canvas = WorldMapFrame:GetCanvas()
             local w, h = canvas:GetSize()
             local zoom = ns.CanvasZoom()
             local isc = (zoom > 0) and (1 / zoom) or 1
             if isc < 0.5 then isc = 0.5 elseif isc > 3 then isc = 3 end
             local style = wcfg.ndWorldStyle
-            if style == "line" then
-                HideDots()
-                EnsureWorldLine()
-                local rim = wcfg.ndWorldRimOn and wcfg.ndWorldRim or 0
-                worldLine:SetThickness(wcfg.ndWorldSize * isc)
-                worldLine:SetStartPoint("TOPLEFT", canvas, pmx * w, -pmy * h)
-                worldLine:SetEndPoint("TOPLEFT", canvas, tmx * w, -tmy * h)
-                worldLine:SetColorTexture(dotR, dotG, dotB, 1)
-                worldLine:Show()
-                if wcfg.ndWorldRimOn then
-                    worldLineBack:SetThickness((wcfg.ndWorldSize + 2 * rim) * isc)
-                    worldLineBack:SetStartPoint("TOPLEFT", canvas, pmx * w, -pmy * h)
-                    worldLineBack:SetEndPoint("TOPLEFT", canvas, tmx * w, -tmy * h)
-                    worldLineBack:Show()
-                else worldLineBack:Hide() end
-            else
-                HideWorldLine()
-                local dxp, dyp = (tmx - pmx) * w, (tmy - pmy) * h
-                local pathU = math.sqrt(dxp * dxp + dyp * dyp)
-                local stepU = (zoom > 0) and (wcfg.ndWorldGap / zoom) or (math.min(w, h) * 0.02)
-                local rot = (style == "dashes" or style == "arrows")
-                local ang = rot and MarkerAngle(style, dxp, -dyp) or 0
-                local phase = (wcfg.ndWorldAnim and stepU > 0) and ((GetTime() * wcfg.ndWorldFlow * isc) % stepU) or 0
-                local n, dd, steps = 0, (phase > 0 and phase or stepU), 0
-                while stepU > 0 and dd < pathU and n < 200 and steps < 600 do
-                    local t = dd / pathU
-                    steps = steps + 1
-                    dd = dd + stepU
-                    local mx = pmx + (tmx - pmx) * t
-                    local my = pmy + (tmy - pmy) * t
-                    -- Skip whatever falls off the map: a target that belongs to
-                    -- another map projects outside 0-1, and drawing it would run
-                    -- a trail of dots across the screen toward nothing.
-                    if mx >= 0 and mx <= 1 and my >= 0 and my <= 1 then
-                        n = n + 1
-                        local d = GetDot(n)
-                        d:ClearAllPoints()
-                        d:SetPoint("CENTER", canvas, "TOPLEFT", mx * w, -my * h)
-                        d.inner:SetScale(isc)
-                        d.inner.fill:SetVertexColor(dotR, dotG, dotB)
-                        if rot then d.inner.fill:SetRotation(ang); d.inner.back:SetRotation(ang) end
-                        d:Show()
+            local nDot, nLine = 0, 0
+
+            for s = 1, #verts - 1 do
+                local a, b = verts[s], verts[s + 1]
+                if style == "line" then
+                    nLine = nLine + 1
+                    local wl = GetWorldLine(nLine)
+                    local rim = wcfg.ndWorldRimOn and wcfg.ndWorldRim or 0
+                    wl.line:SetThickness(wcfg.ndWorldSize * isc)
+                    wl.line:SetStartPoint("TOPLEFT", canvas, a.x * w, -a.y * h)
+                    wl.line:SetEndPoint("TOPLEFT", canvas, b.x * w, -b.y * h)
+                    wl.line:SetColorTexture(dotR, dotG, dotB, 1)
+                    wl.line:Show()
+                    if wcfg.ndWorldRimOn then
+                        wl.back:SetThickness((wcfg.ndWorldSize + 2 * rim) * isc)
+                        wl.back:SetStartPoint("TOPLEFT", canvas, a.x * w, -a.y * h)
+                        wl.back:SetEndPoint("TOPLEFT", canvas, b.x * w, -b.y * h)
+                        wl.back:Show()
+                    else wl.back:Hide() end
+                else
+                    nDot = DrawDotSegment(a.x, a.y, b.x, b.y, nDot,
+                        canvas, w, h, isc, zoom, wcfg, dotR, dotG, dotB)
+                end
+            end
+
+            -- number the stops once there is more than one, so the order is readable
+            local nTag = 0
+            if #verts > 2 then
+                for s = 2, #verts do
+                    local v = verts[s]
+                    if v.idx and v.x >= 0 and v.x <= 1 and v.y >= 0 and v.y <= 1 then
+                        nTag = nTag + 1
+                        local t = GetNumTag(nTag)
+                        t:ClearAllPoints()
+                        t:SetPoint("CENTER", canvas, "TOPLEFT", v.x * w, -v.y * h)
+                        t:SetText(tostring(v.idx))
+                        t:SetTextColor(dotR, dotG, dotB)
+                        t:SetScale(isc)
+                        t:Show()
                     end
                 end
-                for i = n + 1, #pathDots do pathDots[i]:Hide() end
+            end
+            HideNumTags(nTag + 1)
+
+            if style == "line" then
+                HideDots(); HideWorldLines(nLine + 1)
+            else
+                HideWorldLines(1)
+                for i = nDot + 1, #pathDots do pathDots[i]:Hide() end
             end
         else
-            HideDots(); HideWorldLine()
+            HideDots(); HideWorldLines(1); HideNumTags(1)
         end
     else
-        HideDots(); HideWorldLine()
+        HideDots(); HideWorldLines(1); HideNumTags(1)
     end
 
     -- dotted path on the minimap: direction from the zone map (north-up, matches
@@ -571,22 +721,25 @@ function UpdateNav()
 end
 
 function ClearNav()
+    ClearGameWaypoint()     -- the game's pin and its white trail outlive us otherwise
     navUnit = nil
-    navPoint = nil
+    local c = Chain()
+    if c then wipe(c) end   -- wipe, not reassign: the table lives in SpotMeDB
     if arrow then arrow:Hide() end
     if mapClearBtn then mapClearBtn:Hide() end
-    HideDots(); HideMiniDots(); HideWorldLine(); HideMiniLine()
+    HideDots(); HideMiniDots(); HideWorldLines(1); HideNumTags(1); HideMiniLine()
     NotifyNavTarget()
 end
 
 -- /sm navtest — prints why the world-map path may not resolve on the current map.
 function ns.NavDebug()
     local function p(s) print("|cffff33aaSpotMe|r: " .. s) end
-    if not (navUnit or navPoint) then
+    local head, chain = Head(), Chain()
+    if not (navUnit or head) then
         p("no active route — right-click a member or Shift+click the map first"); return
     end
-    p("navUnit=" .. tostring(navUnit) .. " navPoint=" ..
-        (navPoint and (navPoint.mapID .. " " .. string.format("%.1f,%.1f", navPoint.x * 100, navPoint.y * 100)) or "nil"))
+    p("navUnit=" .. tostring(navUnit) .. " points=" .. (chain and #chain or 0) .. " head=" ..
+        (head and (head.mapID .. " " .. string.format("%.1f,%.1f", head.x * 100, head.y * 100)) or "nil"))
     if not (WorldMapFrame and WorldMapFrame:IsShown()) then p("world map is not open"); return end
     local mapID = WorldMapFrame:GetMapID()
     local info = mapID and C_Map.GetMapInfo(mapID)
@@ -610,7 +763,8 @@ local function StartNav(unit)
     local mapID = UnitMapPos(unit)
     if not mapID then return end
     navUnit = unit
-    navPoint = nil
+    local c = Chain()
+    if c then wipe(c) end
     navR, navG, navB = ClassColor(unit)
     EnsureArrow()
     WaypointTo(unit)   -- also drop the Blizzard minimap pin
@@ -622,16 +776,53 @@ end
 -- panel coordinate field, or /sm <x> <y>).
 local function StartNavToPoint(mapID, x, y)
     navUnit = nil
-    navPoint = { mapID = mapID, x = x, y = y }
+    local c = Chain()
+    if not c then return end
+    wipe(c)
+    c[1] = { mapID = mapID, x = x, y = y }
     EnsureArrow()
-    if not (C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID)) then
-        C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x, y))
-        if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
-            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-        end
-    end
+    SyncWaypoint()
     local info = C_Map.GetMapInfo(mapID)
     print("|cffff33aaSpotMe|r: " .. string.format(L.PL_ROUTE_SET, x * 100, y * 100, (info and info.name) or "?"))
+    NotifyNavTarget()
+    UpdateNav()
+end
+
+-- Ctrl+Shift+click: append a stop, or remove the one clicked on (same gesture toggles).
+local HIT_RADIUS = 20   -- screen pixels around a point that count as clicking it
+local function AddOrRemoveChainPoint(mapID, x, y)
+    local c = Chain()
+    if not c then return end
+
+    local canvas = WorldMapFrame.GetCanvas and WorldMapFrame:GetCanvas()
+    local w, h
+    if canvas then w, h = canvas:GetSize() end   -- `and` would truncate this to one value
+    local zoom = ns.CanvasZoom() or 1
+    for i = 1, #c do
+        local px, py = PointMapPos(c[i], mapID, i == 1)
+        if px and w then
+            -- canvas units scale with zoom, so convert to screen pixels before comparing
+            local dx, dy = (px - x) * w * zoom, (py - y) * h * zoom
+            if math.sqrt(dx * dx + dy * dy) <= HIT_RADIUS then
+                table.remove(c, i)
+                print("|cffff33aaSpotMe|r: " .. string.format(L.CHAIN_REMOVED, i, #c))
+                if i == 1 then SyncWaypoint() end
+                NotifyNavTarget()
+                UpdateNav()
+                return
+            end
+        end
+    end
+
+    if #c >= MAX_CHAIN then
+        print("|cffff33aaSpotMe|r: " .. string.format(L.CHAIN_FULL, MAX_CHAIN))
+        return
+    end
+    c[#c + 1] = { mapID = mapID, x = x, y = y }
+    EnsureArrow()
+    if #c == 1 then SyncWaypoint() end
+    local info = C_Map.GetMapInfo(mapID)
+    print("|cffff33aaSpotMe|r: " .. string.format(L.CHAIN_ADDED, #c, x * 100, y * 100, (info and info.name) or "?"))
     NotifyNavTarget()
     UpdateNav()
 end
@@ -655,7 +846,15 @@ local function HookMapClick()
         if cursorX < 0 or cursorX > 1 or cursorY < 0 or cursorY > 1 then return false end
         local mapID = WorldMapFrame:GetMapID()
         if not mapID then return false end
-        StartNavToPoint(mapID, cursorX, cursorY)
+        if IsControlKeyDown() then
+            if not ns.GetCfg().chainMode then
+                print("|cffff33aaSpotMe|r: " .. L.CHAIN_OFF)
+            else
+                AddOrRemoveChainPoint(mapID, cursorX, cursorY)
+            end
+        else
+            StartNavToPoint(mapID, cursorX, cursorY)
+        end
         return true
     end)
 end
@@ -714,7 +913,7 @@ ns.UnitMapPos = UnitMapPos
 -- A route to a spot in another instance/continent cannot be walked to and would
 -- only project far off the viewed map, so drop it when the player changes world.
 local function DropRouteIfWorldChanged()
-    if not (navUnit or navPoint) then return end
+    if not (navUnit or Head()) then return end
     local _, _, _, pI = UnitPosition("player")
     local _, _, tI = NavTargetWorld()
     if pI and tI and pI ~= tI then
@@ -734,7 +933,20 @@ loader:SetScript("OnEvent", function(_, event, addonName)
         return
     end
     HookMapClick()
-    if event == "PLAYER_ENTERING_WORLD" then
+    if event == "PLAYER_LOGIN" then
+        -- A saved route comes back with the session. Say so out loud: a route that
+        -- silently reappears is exactly the "it showed up on its own" complaint that
+        -- v0.15.1 was about. Runs through Core's queue because the config is filled in
+        -- on this same event and the order between files is not guaranteed.
+        ns.RunWhenConfigReady(function()
+            local c = Chain()
+            if c and #c > 0 then
+                EnsureArrow()
+                print("|cffff33aaSpotMe|r: " .. string.format(L.CHAIN_RESTORED, #c))
+                NotifyNavTarget()
+            end
+        end)
+    elseif event == "PLAYER_ENTERING_WORLD" then
         -- position data is not reliable the instant a zone finishes loading
         C_Timer.After(2, DropRouteIfWorldChanged)
     end
@@ -747,5 +959,5 @@ ticker:SetScript("OnUpdate", function(_, elapsed)
     acc = acc + elapsed
     if acc < 0.03 then return end
     acc = 0
-    if navUnit or navPoint then UpdateNav() end
+    if navUnit or Head() then UpdateNav() end
 end)

@@ -11,6 +11,9 @@ globals = {
     "SlashCmdList",
     "SLASH_SPOTME1",
     "SLASH_SPOTME2",
+    -- diagnostics helper: global on purpose so `/run SpotMe_Debug()` fits the
+    -- 255-byte chat input limit that truncates long one-liners
+    "SpotMe_Debug",
 }
 
 -- WoW API the addon reads (known names, not typos).
@@ -55,6 +58,13 @@ read_globals = {
     "UiMapPoint",
     "C_SuperTrack",
     "IsShiftKeyDown",
+    "IsControlKeyDown",
     "CreateVector2D",
     "hash_SlashCmdList",
+    -- error reporting + diagnostics dump
+    "C_AddOns",
+    "GetBuildInfo",
+    "debugstack",
+    "date",
+    "geterrorhandler",
 }

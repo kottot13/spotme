@@ -1,9 +1,10 @@
-## 0.15.1 (2026-08-02)
+## 0.16.0 (2026-08-08)
 
-[Full Changelog](https://github.com/kottot13/spotme/compare/v0.15.0...v0.15.1) · [Previous Releases](https://github.com/kottot13/spotme/releases)
+[Full Changelog](https://github.com/kottot13/spotme/compare/v0.15.1...v0.16.0) · [Previous Releases](https://github.com/kottot13/spotme/releases)
 
-- **Routes no longer appear on their own.** Dragging the world map with `Shift` held used to drop a waypoint, because the game reports a finished drag the same way it reports a click. `Shift`+click still sets a route; panning the map no longer does.
-- **The trail stays on the map.** A target that belongs to another zone used to trail dots off the map toward nothing; the path is now kept within the map it is drawn on.
-- **Routes clean up after themselves** — cleared when you arrive (distance adjustable in the options, or switch it off) and when you travel to another continent.
-- **The minimap button is back**, along with the minimap glow and the minimap trail. They no longer break when another addon moves or restyles the minimap.
-- The `/way` command has been removed. Use `/sm 41.8 66.6`, the coordinate field in the party panel, or `Shift`+click on the map.
+- **Routes with several stops.** Switch on *Route chain* in the options, then `Ctrl`+`Shift`+click the map to add up to 10 stops. The map draws the whole route with numbered points, while the arrow and the minimap lead to the nearest one.
+- Reaching a stop moves you on to the next one automatically; `Ctrl`+`Shift`+click a stop again to remove it.
+- A route now survives a reload and announces itself in chat when it comes back, so it never reappears silently.
+- **New `/sm debug`.** Prints the addon version, client build, any recent errors and where the minimap button actually sits — paste it into a bug report instead of describing the symptom.
+- **Errors are no longer silent.** A failure inside the addon used to vanish without a trace — that is how the minimap button could end up missing after login with nothing in chat to explain it. Failures are now reported, and passed on to BugSack/BugGrabber.
+- **Fixed:** the game's own white dotted trail kept hanging on the map after a route was cleared. Clearing now removes the game's pin as well, and a new option lets you skip that pin entirely.
